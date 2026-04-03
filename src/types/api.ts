@@ -262,6 +262,94 @@ export interface ReportsResponse {
   comparisons: ComparisonsResponse;
 }
 
+export type TrafficEntityType = "website" | "app" | "game_service" | "category" | "unknown" | "other";
+export type ConfidenceLabel = "high" | "medium" | "low" | "unknown" | "derived";
+
+export interface TrafficEntitySummary {
+  entityId: number | null;
+  entityType: TrafficEntityType;
+  displayName: string;
+  categoryName: string | null;
+  confidenceScore: number | null;
+  confidenceLabel: ConfidenceLabel;
+  uploadBytes: number;
+  downloadBytes: number;
+  totalBytes: number;
+}
+
+export interface TrafficCategorySummary {
+  label: string;
+  uploadBytes: number;
+  downloadBytes: number;
+  totalBytes: number;
+}
+
+export interface TrafficListResponse {
+  range: {
+    key: RangeOption;
+    label: string;
+    start: string;
+    end: string;
+    bucket: string;
+  };
+  items: TrafficEntitySummary[];
+}
+
+export interface TrafficCategoryListResponse {
+  range: {
+    key: RangeOption;
+    label: string;
+    start: string;
+    end: string;
+    bucket: string;
+  };
+  items: TrafficCategorySummary[];
+}
+
+export interface TrafficOverviewResponse {
+  range: {
+    key: RangeOption;
+    label: string;
+    start: string;
+    end: string;
+    bucket: string;
+  };
+  totalClassifiedBytes: number;
+  totalUnclassifiedBytes: number;
+  classificationCoveragePercent: number;
+  unknownEncryptedBytes: number;
+  topCategories: TrafficCategorySummary[];
+  topSites: TrafficEntitySummary[];
+  topApps: TrafficEntitySummary[];
+}
+
+export interface TrafficHistoryPoint {
+  timestamp: string;
+  uploadBytes: number;
+  downloadBytes: number;
+  totalBytes: number;
+}
+
+export interface TrafficHistoryResponse {
+  range: {
+    key: RangeOption;
+    label: string;
+    start: string;
+    end: string;
+    bucket: string;
+  };
+  entity: {
+    id: number;
+    entityType: TrafficEntityType;
+    canonicalName: string;
+    displayName: string;
+    categoryName: string | null;
+    vendorName: string | null;
+    metadata: Record<string, unknown> | null;
+  };
+  points: TrafficHistoryPoint[];
+}
+
 export interface LoginPayload {
   email: string;
   password: string;

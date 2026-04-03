@@ -54,6 +54,7 @@ npm run test
 - `/users`
 - `/users/:userId`
 - `/status`
+- `/traffic`
 
 ## Project Structure
 
@@ -65,6 +66,7 @@ src/
     auth/            login + session state
     dashboard/       overview page + summary queries
     isps/            ISP detail query/page
+    traffic/         passive destination/app analytics page + hooks
     status/          status page
     users/           user reporting + detail pages
   lib/               axios, query client, formatting helpers
@@ -79,3 +81,4 @@ src/
 - Axios is configured with `withCredentials: true` for cookie-based auth.
 - The frontend assumes normalized backend values and keeps business logic focused on presentation, filtering, and chart UX.
 - `GROUP_A_TOTAL` should remain excluded by the backend from normal customer user rows.
+- Traffic analytics is intentionally honest: cards and charts may show exact destinations, inferred service families, category-only labels, or `Unknown Encrypted` depending on backend confidence.

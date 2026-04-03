@@ -33,6 +33,7 @@ import {
   useIspDistribution,
   useTopUsers,
 } from "@/features/dashboard/api";
+import { useTrafficOverview } from "@/features/traffic/api";
 import {
   formatBitsPerSecond,
   formatBytes,
@@ -52,6 +53,7 @@ export function DashboardOverviewPage() {
   const groupUsageQuery = useGroupUsage(range);
   const alertsQuery = useAlerts(range);
   const comparisonsQuery = useComparisons();
+  const trafficOverviewQuery = useTrafficOverview("today");
 
   if (
     summaryQuery.isLoading ||
@@ -59,7 +61,8 @@ export function DashboardOverviewPage() {
     distributionQuery.isLoading ||
     topUsersQuery.isLoading ||
     alertsQuery.isLoading ||
-    comparisonsQuery.isLoading
+    comparisonsQuery.isLoading ||
+    trafficOverviewQuery.isLoading
   ) {
     return <LoadingState label="Loading NOC overview..." />;
   }
@@ -71,6 +74,7 @@ export function DashboardOverviewPage() {
     topUsersQuery.isError ||
     alertsQuery.isError ||
     comparisonsQuery.isError ||
+    trafficOverviewQuery.isError ||
     !summaryQuery.data
   ) {
     return <ErrorState onRetry={() => window.location.reload()} />;
@@ -81,6 +85,7 @@ export function DashboardOverviewPage() {
   const distribution = distributionQuery.data!;
   const alerts = alertsQuery.data!;
   const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
+  const traffic = trafficOverviewQuery.data!;
   const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
   const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
 
@@ -114,6 +119,10 @@ export function DashboardOverviewPage() {
           icon={<Users className="h-5 w-5" />}
           helper="Remaining monitored users"
         />
+        <StatCard label="Top Website Today" value={traffic.topSites[0]?.displayName ?? "--"} helper={traffic.topSites[0] ? formatBytes(traffic.topSites[0].totalBytes) : "No imported analytics"} />
+        <StatCard label="Top App Today" value={traffic.topApps[0]?.displayName ?? "--"} helper={traffic.topApps[0] ? formatBytes(traffic.topApps[0].totalBytes) : "No imported analytics"} />
+        <StatCard label="Top Category Today" value={traffic.topCategories[0]?.label ?? "--"} helper={traffic.topCategories[0] ? formatBytes(traffic.topCategories[0].totalBytes) : "No imported analytics"} />
+        <StatCard label="Unknown Encrypted Share" value={formatPercentage(100 - traffic.classificationCoveragePercent, 1)} helper={formatBytes(traffic.unknownEncryptedBytes)} />
       </div>
 
       <ChartCard title="Live WAN Traffic" description="Current WAN throughput by interface with recent sparkline samples.">

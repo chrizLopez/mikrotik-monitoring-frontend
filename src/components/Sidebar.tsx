@@ -1,10 +1,11 @@
-import { Activity, Bell, FileBarChart2, Gauge, Network, Router, Users } from "lucide-react";
+import { Activity, Bell, FileBarChart2, Gauge, Network, Radar, Router, Users } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useDashboardIsps } from "@/features/dashboard/api";
 import { cn } from "@/lib/utils";
 
 const baseNavigation = [
   { label: "Overview", to: "/", icon: Gauge },
+  { label: "Traffic", to: "/traffic", icon: Radar },
   { label: "Users", to: "/users", icon: Users },
   { label: "Alerts", to: "/alerts", icon: Bell },
   { label: "Reports", to: "/reports", icon: FileBarChart2 },

@@ -17,11 +17,13 @@ import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useTrafficHistory, useUserTrafficTopDestinations } from "@/features/traffic/api";
 import { useQuotaTimeline, useThrottlingHistory, useUsers } from "@/features/users/api";
 import {
   formatBitsPerSecond,
   formatBytes,
   formatChartTick,
+  formatConfidenceLabel,
   formatPercentage,
   formatTimestamp,
 } from "@/lib/utils";
@@ -33,12 +35,15 @@ export function UserDetailPage() {
   const usersQuery = useUsers();
   const quotaTimelineQuery = useQuotaTimeline(userId, range);
   const throttlingQuery = useThrottlingHistory(userId, range);
+  const trafficQuery = useUserTrafficTopDestinations(userId, range, 8);
+  const historyEntityId = trafficQuery.data?.items.find((item) => item.entityId != null)?.entityId ?? null;
+  const trafficHistoryQuery = useTrafficHistory(historyEntityId, range);
 
-  if (usersQuery.isLoading || quotaTimelineQuery.isLoading || throttlingQuery.isLoading) {
+  if (usersQuery.isLoading || quotaTimelineQuery.isLoading || throttlingQuery.isLoading || trafficQuery.isLoading) {
     return <LoadingState label="Loading user detail..." />;
   }
 
-  if (usersQuery.isError || quotaTimelineQuery.isError || throttlingQuery.isError || !quotaTimelineQuery.data) {
+  if (usersQuery.isError || quotaTimelineQuery.isError || throttlingQuery.isError || trafficQuery.isError || !quotaTimelineQuery.data) {
     return <ErrorState />;
   }
 
@@ -155,6 +160,53 @@ export function UserDetailPage() {
           <EmptyState description="No throttling transitions were derived for the selected range." />
         )}
       </ChartCard>
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <ChartCard title="Traffic Profile" description="Top destinations, apps, and category fallbacks for this monitored user.">
+          <div className="space-y-3">
+            {trafficQuery.data?.items.length ? (
+              trafficQuery.data.items.map((item) => (
+                <div key={`${item.entityId ?? item.displayName}`} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{item.displayName}</p>
+                      <p className="text-xs text-text-soft">{item.categoryName ?? "Uncategorized"}</p>
+                    </div>
+                    <span className="rounded-full bg-surface-soft px-2 py-1 text-xs text-text-soft">{formatConfidenceLabel(item.confidenceLabel)}</span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold">{formatBytes(item.totalBytes)}</p>
+                </div>
+              ))
+            ) : (
+              <EmptyState description="No imported traffic analytics for this user in the selected range." />
+            )}
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Selected Entity Trend" description="History for the top classified destination or app for this user.">
+          {trafficHistoryQuery.data?.points.length ? (
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trafficHistoryQuery.data.points}>
+                  <defs>
+                    <linearGradient id="userTrafficGradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                  <XAxis dataKey="timestamp" tickFormatter={formatChartTick} minTickGap={28} />
+                  <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
+                  <Tooltip labelFormatter={(value: string) => formatTimestamp(value)} formatter={(value: number) => formatBytes(value)} />
+                  <Area type="monotone" dataKey="totalBytes" stroke="#22c55e" fillOpacity={1} fill="url(#userTrafficGradient)" strokeWidth={3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <EmptyState description="No traffic trend is available for the selected entity yet." />
+          )}
+        </ChartCard>
+      </div>
     </div>
   );
 }

@@ -19,9 +19,11 @@ import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useDashboardIsps } from "@/features/dashboard/api";
 import { useIspHealthHistory, useIspHistory } from "@/features/isps/api";
+import { useIspTrafficTopDestinations } from "@/features/traffic/api";
 import {
   formatBitsPerSecond,
   formatBytes,
+  formatConfidenceLabel,
   formatChartTick,
   formatDurationMinutes,
   formatLatency,
@@ -36,12 +38,13 @@ export function IspDetailPage() {
   const query = useIspHistory(ispId, range);
   const healthQuery = useIspHealthHistory(ispId, range);
   const ispsQuery = useDashboardIsps();
+  const trafficQuery = useIspTrafficTopDestinations(ispId, range, 8);
 
-  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading) {
+  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading || trafficQuery.isLoading) {
     return <LoadingState label="Loading ISP detail..." />;
   }
 
-  if (query.isError || healthQuery.isError || ispsQuery.isError || !query.data || !healthQuery.data) {
+  if (query.isError || healthQuery.isError || ispsQuery.isError || trafficQuery.isError || !query.data || !healthQuery.data) {
     return <ErrorState />;
   }
 
@@ -136,6 +139,27 @@ export function IspDetailPage() {
         ) : (
           <EmptyState description="No ISP health history has been recorded yet." />
         )}
+      </ChartCard>
+
+      <ChartCard title="Traffic Profile" description="Top destinations traversing this ISP, including service-family and category fallback labels.">
+        <div className="grid gap-3 md:grid-cols-2">
+          {trafficQuery.data?.items.length ? (
+            trafficQuery.data.items.map((item) => (
+              <div key={`${item.entityId ?? item.displayName}`} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{item.displayName}</p>
+                    <p className="text-xs text-text-soft">{item.categoryName ?? "Uncategorized"}</p>
+                  </div>
+                  <span className="rounded-full bg-surface-soft px-2 py-1 text-xs text-text-soft">{formatConfidenceLabel(item.confidenceLabel)}</span>
+                </div>
+                <p className="mt-3 text-sm font-semibold">{formatBytes(item.totalBytes)}</p>
+              </div>
+            ))
+          ) : (
+            <EmptyState description="No destination analytics are available for this ISP and range." />
+          )}
+        </div>
       </ChartCard>
     </div>
   );

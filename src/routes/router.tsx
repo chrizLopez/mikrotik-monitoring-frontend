@@ -24,6 +24,9 @@ const AlertsPage = lazy(() =>
 const ReportsPage = lazy(() =>
   import("@/features/dashboard/pages/ReportsPage").then((module) => ({ default: module.ReportsPage })),
 );
+const TrafficAnalyticsPage = lazy(() =>
+  import("@/features/traffic/pages/TrafficAnalyticsPage").then((module) => ({ default: module.TrafficAnalyticsPage })),
+);
 const UserDetailPage = lazy(() =>
   import("@/features/users/pages/UserDetailPage").then((module) => ({ default: module.UserDetailPage })),
 );
@@ -129,6 +132,14 @@ export const router = createBrowserRouter([
         element: (
           <LazyPage>
             <ReportsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "traffic",
+        element: (
+          <LazyPage>
+            <TrafficAnalyticsPage />
           </LazyPage>
         ),
       },

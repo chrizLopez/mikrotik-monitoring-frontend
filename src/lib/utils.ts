@@ -114,3 +114,18 @@ export function formatChartTick(value: string) {
     minute: "2-digit",
   }).format(date);
 }
+
+export function formatConfidenceLabel(value: string | null | undefined) {
+  switch (value) {
+    case "high":
+      return "High confidence";
+    case "medium":
+      return "Inferred";
+    case "low":
+      return "Category only";
+    case "derived":
+      return "Derived";
+    default:
+      return "Unknown";
+  }
+}

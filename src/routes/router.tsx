@@ -18,6 +18,12 @@ const IspDetailPage = lazy(() =>
 const StatusPage = lazy(() =>
   import("@/features/status/pages/StatusPage").then((module) => ({ default: module.StatusPage })),
 );
+const AlertsPage = lazy(() =>
+  import("@/features/dashboard/pages/AlertsPage").then((module) => ({ default: module.AlertsPage })),
+);
+const ReportsPage = lazy(() =>
+  import("@/features/dashboard/pages/ReportsPage").then((module) => ({ default: module.ReportsPage })),
+);
 const UserDetailPage = lazy(() =>
   import("@/features/users/pages/UserDetailPage").then((module) => ({ default: module.UserDetailPage })),
 );
@@ -107,6 +113,22 @@ export const router = createBrowserRouter([
         element: (
           <LazyPage>
             <StatusPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "alerts",
+        element: (
+          <LazyPage>
+            <AlertsPage />
+          </LazyPage>
+        ),
+      },
+      {
+        path: "reports",
+        element: (
+          <LazyPage>
+            <ReportsPage />
           </LazyPage>
         ),
       },

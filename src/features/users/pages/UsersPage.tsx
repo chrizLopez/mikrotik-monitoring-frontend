@@ -1,4 +1,4 @@
-import { ArrowUpDown, Search } from "lucide-react";
+import { ArrowUpDown, Search, Zap } from "lucide-react";
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/DataTable";
@@ -6,20 +6,24 @@ import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { ExportButton } from "@/components/ExportButton";
 import { LoadingState } from "@/components/LoadingState";
+import { RangeSelector } from "@/components/RangeSelector";
 import { StatusBadge } from "@/components/StatusBadge";
+import { useTopUsers } from "@/features/dashboard/api";
 import { useUsers } from "@/features/users/api";
-import { formatBytes, formatPercentage, formatRelativeTime, formatTimestamp } from "@/lib/utils";
-import { GroupKey, UserRecord, UserState } from "@/types/api";
+import { formatBitsPerSecond, formatBytes, formatPercentage, formatRelativeTime, formatTimestamp } from "@/lib/utils";
+import { GroupKey, RangeOption, UserRecord, UserState } from "@/types/api";
 
 type SortKey = "usedBytes" | "remainingBytes" | "usagePercent";
 
 export function UsersPage() {
   const query = useUsers();
+  const [range, setRange] = useState<RangeOption>("cycle");
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<"ALL" | GroupKey>("ALL");
   const [stateFilter, setStateFilter] = useState<"ALL" | UserState>("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("usedBytes");
   const deferredSearch = useDeferredValue(search);
+  const topUsersQuery = useTopUsers(range);
 
   const rows = useMemo(() => {
     const users = query.data?.items ?? [];
@@ -46,11 +50,33 @@ export function UsersPage() {
         <div>
           <h1 className="text-3xl font-semibold">Users</h1>
           <p className="mt-2 text-sm text-text-soft">
-            Search, filter, sort, and export customer reporting for quota review.
+            Search, filter, sort, and export customer reporting with quota thresholds and current activity.
           </p>
         </div>
-        <ExportButton range="cycle" />
+        <div className="flex flex-wrap gap-3">
+          <RangeSelector value={range} onChange={setRange} />
+          <ExportButton range={range} />
+        </div>
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        {(topUsersQuery.data?.items ?? []).slice(0, 3).map((user) => (
+          <Link key={user.id} to={`/users/${user.id}`} className="panel p-5 transition hover:-translate-y-0.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">Top consumer</p>
+                <h3 className="mt-1 text-lg font-semibold">{user.name}</h3>
+              </div>
+              <Zap className="h-4 w-4 text-accent" />
+            </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <p>Used: {formatBytes(user.usedBytes)}</p>
+              <p>Quota: {formatPercentage(user.usagePercent, 1)}</p>
+              <p>Current rate: {formatBitsPerSecond(user.currentCombinedBps ?? 0)}</p>
+            </div>
+          </Link>
+        ))}
+      </section>
 
       <section className="panel p-5">
         <div className="grid gap-4 xl:grid-cols-[1.4fr_repeat(3,0.8fr)]">
@@ -123,9 +149,21 @@ export function UsersPage() {
             { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
             { key: "used", label: "Used", render: (user) => formatBytes(user.usedBytes) },
             { key: "remaining", label: "Remaining", render: (user) => formatBytes(user.remainingBytes) },
-            { key: "percent", label: "Usage %", render: (user) => formatPercentage(user.usagePercent) },
+            {
+              key: "percent",
+              label: "Usage %",
+              render: (user) => (
+                <div>
+                  <span>{formatPercentage(user.usagePercent)}</span>
+                  <p className="text-xs text-text-soft">
+                    {user.usagePercent >= 100 ? "100%" : user.usagePercent >= 90 ? "90%" : user.usagePercent >= 80 ? "80%" : user.usagePercent >= 50 ? "50%" : "Below 50%"}
+                  </p>
+                </div>
+              ),
+            },
             { key: "state", label: "State", render: (user) => <StatusBadge status={user.state} /> },
             { key: "limit", label: "Current Max Limit", render: (user) => user.currentMaxLimit },
+            { key: "activity", label: "Current Activity", render: (user) => formatBitsPerSecond(user.currentCombinedBps ?? 0) },
             { key: "updated", label: "Last Updated", render: (user) => formatRelativeTime(user.lastUpdatedAt) },
           ]}
           rows={rows}

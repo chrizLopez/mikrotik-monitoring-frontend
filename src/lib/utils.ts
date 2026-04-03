@@ -42,6 +42,19 @@ export function formatPercentage(value: number | null | undefined, digits = 0) {
   return `${value.toFixed(digits)}%`;
 }
 
+export function formatLatency(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "--";
+  return `${value.toFixed(value >= 100 ? 0 : 1)} ms`;
+}
+
+export function formatDurationMinutes(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "--";
+  if (value < 60) return `${Math.round(value)} mins`;
+
+  const hours = value / 60;
+  return `${hours.toFixed(hours >= 10 ? 0 : 1)} hrs`;
+}
+
 export function formatTimestamp(value: string | null | undefined) {
   if (!value) return "--";
   return new Intl.DateTimeFormat(undefined, {
@@ -85,6 +98,8 @@ export function formatRangeLabel(range: string) {
       return "Last 30 Days";
     case "cycle":
       return "Current Billing Cycle";
+    case "prev_cycle":
+      return "Previous Billing Cycle";
     default:
       return range;
   }

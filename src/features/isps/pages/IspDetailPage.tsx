@@ -18,25 +18,35 @@ import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useDashboardIsps } from "@/features/dashboard/api";
-import { useIspHistory } from "@/features/isps/api";
-import { formatBitsPerSecond, formatBytes, formatChartTick, formatTimestamp } from "@/lib/utils";
+import { useIspHealthHistory, useIspHistory } from "@/features/isps/api";
+import {
+  formatBitsPerSecond,
+  formatBytes,
+  formatChartTick,
+  formatDurationMinutes,
+  formatLatency,
+  formatPercentage,
+  formatTimestamp,
+} from "@/lib/utils";
 import { RangeOption } from "@/types/api";
 
 export function IspDetailPage() {
   const { ispId = "" } = useParams();
   const [range, setRange] = useState<RangeOption>("24h");
   const query = useIspHistory(ispId, range);
+  const healthQuery = useIspHealthHistory(ispId, range);
   const ispsQuery = useDashboardIsps();
 
-  if (query.isLoading || ispsQuery.isLoading) {
+  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading) {
     return <LoadingState label="Loading ISP detail..." />;
   }
 
-  if (query.isError || ispsQuery.isError || !query.data) {
+  if (query.isError || healthQuery.isError || ispsQuery.isError || !query.data || !healthQuery.data) {
     return <ErrorState />;
   }
 
   const { totals, points } = query.data;
+  const health = healthQuery.data;
   const isp = ispsQuery.data?.items.find((item) => item.id === ispId || item.interfaceName === ispId);
 
   if (!isp) {
@@ -50,7 +60,7 @@ export function IspDetailPage() {
           <p className="text-sm text-text-soft">{isp.interfaceName}</p>
           <div className="mt-1 flex items-center gap-3">
             <h1 className="text-3xl font-semibold">{isp.name}</h1>
-            <StatusBadge status={isp.status} />
+            <StatusBadge status={health.latest.status ?? isp.status} />
           </div>
           <p className="mt-2 text-sm text-text-soft">Last updated: {formatTimestamp(isp.lastUpdatedAt)}</p>
         </div>
@@ -62,9 +72,7 @@ export function IspDetailPage() {
           <Link
             key={item.id}
             to={`/isps/${item.id}`}
-            className={`rounded-xl px-3 py-2 text-sm ${
-              item.id === isp.id ? "bg-accent text-white" : "bg-surface text-text-soft"
-            }`}
+            className={`rounded-xl px-3 py-2 text-sm ${item.id === isp.id ? "bg-accent text-white" : "bg-surface text-text-soft"}`}
           >
             {item.name}
           </Link>
@@ -74,11 +82,17 @@ export function IspDetailPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Current Download" value={formatBitsPerSecond(isp.currentRxBps)} />
         <StatCard label="Current Upload" value={formatBitsPerSecond(isp.currentTxBps)} />
-        <StatCard label="Range Download" value={formatBytes(totals.rxBytes)} />
-        <StatCard label="Range Upload" value={formatBytes(totals.txBytes)} />
+        <StatCard label="Range Traffic" value={formatBytes(totals.combinedBytes)} />
+        <StatCard label="Peak Snapshot" value={formatBitsPerSecond(Math.max(...points.map((point) => point.rxBps + point.txBps), 0))} />
       </div>
 
-      <ChartCard title="Throughput History" description="RX/TX line chart for the selected range.">
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Latest Latency" value={formatLatency(health.latest.latencyMs)} />
+        <StatCard label="Packet Loss" value={formatPercentage(health.latest.packetLossPercent ?? 0, 1)} />
+        <StatCard label="Downtime" value={formatDurationMinutes(health.outages.totalDowntimeMinutes)} helper={`${health.outages.count} outages`} />
+      </div>
+
+      <ChartCard title="Throughput History" description="RX/TX history for the selected range.">
         {points.length ? (
           <div className="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -86,10 +100,7 @@ export function IspDetailPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
                 <XAxis dataKey="timestamp" tickFormatter={formatChartTick} minTickGap={28} />
                 <YAxis tickFormatter={(value) => formatBitsPerSecond(Number(value))} />
-                <Tooltip
-                  labelFormatter={(value: string) => formatTimestamp(value)}
-                  formatter={(value: number) => formatBitsPerSecond(value)}
-                />
+                <Tooltip labelFormatter={(value: string) => formatTimestamp(value)} formatter={(value: number) => formatBitsPerSecond(value)} />
                 <Legend />
                 <Line type="monotone" dataKey="rxBps" stroke="#0891b2" strokeWidth={3} dot={false} name="Download" />
                 <Line type="monotone" dataKey="txBps" stroke="#22c55e" strokeWidth={3} dot={false} name="Upload" />
@@ -98,6 +109,32 @@ export function IspDetailPage() {
           </div>
         ) : (
           <EmptyState />
+        )}
+      </ChartCard>
+
+      <ChartCard title="Latency and Loss" description="Read-only ISP quality history from health snapshots.">
+        {health.points.length ? (
+          <div className="h-[360px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={health.points}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                <XAxis dataKey="timestamp" tickFormatter={formatChartTick} minTickGap={28} />
+                <YAxis yAxisId="left" tickFormatter={(value) => formatLatency(Number(value))} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${Number(value)}%`} />
+                <Tooltip
+                  labelFormatter={(value: string) => formatTimestamp(value)}
+                  formatter={(value: number, name: string) =>
+                    name === "Packet Loss" ? formatPercentage(value, 1) : formatLatency(value)
+                  }
+                />
+                <Legend />
+                <Line yAxisId="left" type="monotone" dataKey="latencyMs" stroke="#f97316" strokeWidth={3} dot={false} name="Latency" />
+                <Line yAxisId="right" type="monotone" dataKey="packetLossPercent" stroke="#ef4444" strokeWidth={3} dot={false} name="Packet Loss" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <EmptyState description="No ISP health history has been recorded yet." />
         )}
       </ChartCard>
     </div>

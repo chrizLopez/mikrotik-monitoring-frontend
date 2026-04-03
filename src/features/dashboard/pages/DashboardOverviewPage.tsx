@@ -1,5 +1,5 @@
-import { Activity, ArrowDownCircle, Globe, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Activity, AlertTriangle, GaugeCircle, Users } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -24,46 +24,63 @@ import { LoadingState } from "@/components/LoadingState";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useDashboardIsps, useDashboardSummary, useGroupUsage, useTopUsers } from "@/features/dashboard/api";
-import { useIspHistory } from "@/features/isps/api";
-import { useUsers } from "@/features/users/api";
+import {
+  useAlerts,
+  useComparisons,
+  useDashboardLive,
+  useDashboardSummary,
+  useGroupUsage,
+  useIspDistribution,
+  useTopUsers,
+} from "@/features/dashboard/api";
 import {
   formatBitsPerSecond,
   formatBytes,
-  formatChartTick,
-  formatRangeLabel,
+  formatPercentage,
   formatTimestamp,
 } from "@/lib/utils";
-import { RangeOption, UserRecord } from "@/types/api";
+import { ActiveUser, RangeOption, TopUserItem } from "@/types/api";
+
+const ISP_COLORS = ["#0891b2", "#22c55e", "#f97316"];
 
 export function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
-  const [selectedIspId, setSelectedIspId] = useState("");
   const summaryQuery = useDashboardSummary();
-  const ispsQuery = useDashboardIsps();
+  const liveQuery = useDashboardLive();
+  const distributionQuery = useIspDistribution(range);
   const topUsersQuery = useTopUsers(range);
   const groupUsageQuery = useGroupUsage(range);
-  const usersQuery = useUsers();
-  const isps = ispsQuery.data?.items ?? [];
-  const selectedIspQuery = useIspHistory(selectedIspId, range);
+  const alertsQuery = useAlerts(range);
+  const comparisonsQuery = useComparisons();
 
-  useEffect(() => {
-    if (!selectedIspId && isps.length) {
-      setSelectedIspId(isps[0].id);
-    }
-  }, [isps, selectedIspId]);
-
-  if (summaryQuery.isLoading || ispsQuery.isLoading || usersQuery.isLoading) {
-    return <LoadingState label="Loading overview..." />;
+  if (
+    summaryQuery.isLoading ||
+    liveQuery.isLoading ||
+    distributionQuery.isLoading ||
+    topUsersQuery.isLoading ||
+    alertsQuery.isLoading ||
+    comparisonsQuery.isLoading
+  ) {
+    return <LoadingState label="Loading NOC overview..." />;
   }
 
-  if (summaryQuery.isError || ispsQuery.isError || usersQuery.isError || !summaryQuery.data) {
+  if (
+    summaryQuery.isError ||
+    liveQuery.isError ||
+    distributionQuery.isError ||
+    topUsersQuery.isError ||
+    alertsQuery.isError ||
+    comparisonsQuery.isError ||
+    !summaryQuery.data
+  ) {
     return <ErrorState onRetry={() => window.location.reload()} />;
   }
 
   const summary = summaryQuery.data;
-  const throttledUsers = (usersQuery.data?.items ?? []).filter((user) => user.state === "THROTTLED");
-  const selectedIsp = isps.find((isp) => isp.id === selectedIspId);
+  const live = liveQuery.data!;
+  const distribution = distributionQuery.data!;
+  const alerts = alertsQuery.data!;
+  const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
   const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
   const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
 
@@ -72,142 +89,126 @@ export function DashboardOverviewPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
-          <h1 className="mt-1 text-3xl font-semibold">Dashboard Overview</h1>
+          <h1 className="mt-1 text-3xl font-semibold">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            Billing cycle: {summary.billingCycleLabel} | Range: {formatRangeLabel(range)}
+            WAN traffic, quota pressure, alerting, and customer activity from the current monitoring pipeline.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="Cycle Usage" value={formatBytes(summary.totals.totalUsageBytes)} icon={<GaugeCircle className="h-5 w-5" />} />
+        <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
+        <StatCard label="Active Issues" value={alerts.activeIssues} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
         <StatCard
-          label="Total Usage"
-          value={formatBytes(summary.totals.totalUsageBytes)}
-          helper="Across all monitored customer networks"
-          icon={<Activity className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Active Users"
-          value={summary.totals.totalActiveUsers}
-          helper="Customer rows excluding aggregate totals"
-          icon={<Users className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Throttled Users"
-          value={summary.totals.throttledUsers}
-          helper="Reduced to the quota throttle profile"
-          icon={<ArrowDownCircle className="h-5 w-5" />}
-        />
-        <StatCard
-          label="Online ISPs"
-          value={`${summary.totals.activeIsps} / ${isps.length}`}
-          helper="Live WAN availability"
-          icon={<Globe className="h-5 w-5" />}
-        />
-        <StatCard
-          label="New Starlink Usage"
+          label="Group A Usage"
           value={formatBytes(groupAUsage)}
-          helper="Home Router, Camaymayan, and Rutor"
           icon={<Users className="h-5 w-5" />}
+          helper="Home Router, Camaymayan, and Rutor"
         />
         <StatCard
-          label="Old Starlink + Smart Bro"
+          label="Group B Usage"
           value={formatBytes(groupBUsage)}
-          helper="Remaining monitored users"
           icon={<Users className="h-5 w-5" />}
+          helper="Remaining monitored users"
         />
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        {isps.map((isp) => (
-          <Link key={isp.id} to={`/isps/${isp.id}`} className="panel p-5 transition hover:-translate-y-0.5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm text-text-soft">{isp.interfaceName}</p>
-                <h3 className="mt-1 text-xl font-semibold">{isp.name}</h3>
+      <ChartCard title="Live WAN Traffic" description="Current WAN throughput by interface with recent sparkline samples.">
+        <div className="grid gap-4 xl:grid-cols-3">
+          {live.isps.map((isp, index) => (
+            <div key={isp.id} className="rounded-2xl border border-line/80 bg-surface p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-text-soft">{isp.interfaceName}</p>
+                  <Link to={`/isps/${isp.id}`} className="mt-1 block text-lg font-semibold text-accent">
+                    {isp.name}
+                  </Link>
+                </div>
+                <StatusBadge status={isp.status} />
               </div>
-              <StatusBadge status={isp.status} />
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-text-soft">RX</p>
+                  <p className="font-semibold">{formatBitsPerSecond(isp.currentRxBps)}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">TX</p>
+                  <p className="font-semibold">{formatBitsPerSecond(isp.currentTxBps)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-text-soft">Combined</p>
+                  <p className="font-semibold">{formatBitsPerSecond(isp.currentTotalBps ?? 0)}</p>
+                </div>
+              </div>
+              <div className="mt-4 h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={isp.trend ?? []}>
+                    <Line dataKey="totalBps" type="monotone" stroke={ISP_COLORS[index % ISP_COLORS.length]} strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-2 text-xs text-text-soft">{formatTimestamp(isp.lastUpdatedAt)}</p>
             </div>
-            <dl className="mt-5 grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-text-soft">Download</dt>
-                <dd className="mt-1 text-lg font-semibold">{formatBitsPerSecond(isp.currentRxBps)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-text-soft">Upload</dt>
-                <dd className="mt-1 text-lg font-semibold">{formatBitsPerSecond(isp.currentTxBps)}</dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs uppercase tracking-wide text-text-soft">Total Traffic</dt>
-                <dd className="mt-1 text-lg font-semibold">{formatBytes(isp.totalTrafficBytes)}</dd>
-              </div>
-            </dl>
-          </Link>
-        ))}
-      </section>
+          ))}
+        </div>
+      </ChartCard>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard
-          title="ISP Throughput History"
-          description="Selected WAN history for the chosen range."
-          action={
-            <div className="flex flex-wrap gap-2">
-              {isps.map((isp) => (
-                <button
-                  key={isp.id}
-                  type="button"
-                  onClick={() => setSelectedIspId(isp.id)}
-                  className={`rounded-xl px-3 py-2 text-sm ${
-                    selectedIspId === isp.id ? "bg-accent text-white" : "bg-surface text-text-soft"
-                  }`}
-                >
-                  {isp.name}
-                </button>
-              ))}
-            </div>
-          }
-        >
-          {selectedIspQuery.data?.points.length ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={selectedIspQuery.data.points}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
-                  <XAxis dataKey="timestamp" tickFormatter={formatChartTick} minTickGap={28} />
-                  <YAxis tickFormatter={(value) => formatBitsPerSecond(Number(value))} />
-                  <Tooltip
-                    labelFormatter={(value: string) => formatTimestamp(value)}
-                    formatter={(value: number) => formatBitsPerSecond(value)}
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="rxBps" stroke="#0891b2" strokeWidth={3} dot={false} name="Download" />
-                  <Line type="monotone" dataKey="txBps" stroke="#22c55e" strokeWidth={3} dot={false} name="Upload" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState
-              title={selectedIsp ? `${selectedIsp.name} has no history yet` : "No data yet"}
-              description="Historical ISP throughput points will render here when the history endpoint returns data."
-            />
-          )}
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <ChartCard title="Top Active Users Right Now" description="Short-window derived download and upload rates from recent queue snapshots.">
+          <DataTable<ActiveUser>
+            columns={[
+              {
+                key: "name",
+                label: "User",
+                render: (user) => (
+                  <div>
+                    <Link to={`/users/${user.id}`} className="font-medium text-accent">
+                      {user.name}
+                    </Link>
+                    <p className="text-xs text-text-soft">{user.subnet}</p>
+                  </div>
+                ),
+              },
+              { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
+              { key: "down", label: "Download", render: (user) => formatBitsPerSecond(user.downloadBps) },
+              { key: "up", label: "Upload", render: (user) => formatBitsPerSecond(user.uploadBps) },
+              { key: "combined", label: "Combined", render: (user) => formatBitsPerSecond(user.combinedBps) },
+              { key: "state", label: "State", render: (user) => <StatusBadge status={user.state} /> },
+            ]}
+            rows={live.topActiveUsers}
+            getRowKey={(row) => row.id}
+            emptyState={<EmptyState description="No active user rate data is available yet." />}
+          />
         </ChartCard>
 
-        <ChartCard title="Group A vs Group B" description="Usage split for the selected range.">
-          {groupUsageQuery.data?.items.length ? (
+        <ChartCard title="Alert Summary" description="Derived quota, health, and unusual-usage insights.">
+          <div className="space-y-3">
+            {[...alerts.healthAlerts, ...alerts.quotaAlerts, ...alerts.usageAlerts].slice(0, 6).map((alert) => (
+              <div key={`${alert.type}-${alert.title}`} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">{alert.title}</p>
+                  <span className="text-xs uppercase tracking-wide text-text-soft">{alert.severity}</span>
+                </div>
+                <p className="mt-1 text-sm text-text-soft">{alert.subject}</p>
+              </div>
+            ))}
+            {!alerts.healthAlerts.length && !alerts.quotaAlerts.length && !alerts.usageAlerts.length ? <EmptyState description="No active alerts in the selected range." /> : null}
+          </div>
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ChartCard title="ISP Load Distribution" description="Traffic share across Old Starlink, New Starlink, and SmartBro.">
+          {distribution.items.length ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={groupUsageQuery.data.items}
-                    dataKey="totalBytes"
-                    nameKey="group"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={4}
-                  >
-                    {groupUsageQuery.data.items.map((entry) => (
-                      <Cell key={entry.group} fill={entry.group === "GROUP_A" ? "#0891b2" : "#22c55e"} />
+                  <Pie data={distribution.items} dataKey="totalTrafficBytes" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={4}>
+                    {distribution.items.map((item, index) => (
+                      <Cell key={item.id} fill={ISP_COLORS[index % ISP_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatBytes(value)} />
@@ -219,14 +220,12 @@ export function DashboardOverviewPage() {
             <EmptyState />
           )}
         </ChartCard>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
-        <ChartCard title="Top Users" description="Highest usage customers for the selected range.">
+        <ChartCard title="Top Consumers" description="Top usage by selected range.">
           {topUsersQuery.data?.items.length ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topUsersQuery.data.items} layout="vertical">
+                <BarChart data={topUsersQuery.data.items.slice(0, 10)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
                   <XAxis type="number" tickFormatter={(value) => formatBytes(Number(value))} />
                   <YAxis type="category" dataKey="name" width={140} />
@@ -239,23 +238,53 @@ export function DashboardOverviewPage() {
             <EmptyState />
           )}
         </ChartCard>
+      </div>
 
-        <ChartCard title="Throttled Users" description="Users currently running on the lower throttle profile.">
-          <DataTable<UserRecord>
-            columns={[
-              {
-                key: "name",
-                label: "Name",
-                render: (user) => <Link to={`/users/${user.id}`}>{user.name}</Link>,
-              },
-              { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
-              { key: "used", label: "Used", render: (user) => formatBytes(user.usedBytes) },
-              { key: "state", label: "State", render: (user) => <StatusBadge status={user.state} /> },
-            ]}
-            rows={throttledUsers}
-            getRowKey={(user) => user.id}
-            emptyState={<EmptyState description="No users are throttled for the current snapshot." />}
-          />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ChartCard title="Group A vs Group B Trend" description="Selected-range group share with totals from positive deltas.">
+          {groupUsageQuery.data?.items.length ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={groupUsageQuery.data.items}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                  <XAxis dataKey="group" />
+                  <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
+                  <Tooltip formatter={(value: number) => formatBytes(value)} />
+                  <Bar dataKey="totalBytes" fill="#0891b2" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Cycle Comparison" description={`${comparisons.currentLabel} against ${comparisons.previousLabel}.`}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">ISP traffic</p>
+              <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalIspTraffic.current)}</p>
+              <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalIspTraffic.changePercent ?? 0, 1)}</p>
+            </div>
+            <div className="rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">User traffic</p>
+              <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalUserTraffic.current)}</p>
+              <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalUserTraffic.changePercent ?? 0, 1)}</p>
+            </div>
+            <div className="md:col-span-2 rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">Top user movement</p>
+              <div className="mt-3 space-y-2">
+                {comparisons.topUsers.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
+                    <span>{item.name}</span>
+                    <span className="text-text-soft">
+                      {formatBytes(item.currentTotalBytes)} / {formatPercentage(item.changePercent ?? 0, 1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </ChartCard>
       </div>
     </div>

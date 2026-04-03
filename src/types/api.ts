@@ -1,6 +1,7 @@
-export type RangeOption = "today" | "24h" | "7d" | "30d" | "cycle";
+export type RangeOption = "today" | "24h" | "7d" | "30d" | "cycle" | "prev_cycle";
 export type UserState = "NORMAL" | "THROTTLED";
 export type GroupKey = "GROUP_A" | "GROUP_B";
+export type HealthStatus = "online" | "offline" | "degraded";
 
 export interface AuthUser {
   id: number;
@@ -38,22 +39,31 @@ export interface ThroughputPoint {
   timestamp: string;
   rxBps: number;
   txBps: number;
+  totalBps?: number;
   totalBytes?: number;
   downloadBytes?: number;
   uploadBytes?: number;
+  cumulativeBytes?: number;
+  latencyMs?: number | null;
+  packetLossPercent?: number | null;
+  jitterMs?: number | null;
+  status?: HealthStatus;
 }
 
 export interface Isp {
   id: string;
   name: string;
   interfaceName: string;
-  status: "online" | "offline";
+  status: HealthStatus;
   currentRxBps: number;
   currentTxBps: number;
+  currentTotalBps?: number;
   downloadBytes: number;
   uploadBytes: number;
   totalTrafficBytes: number;
+  sharePercent?: number;
   lastUpdatedAt: string | null;
+  trend?: ThroughputPoint[];
 }
 
 export interface IspHistoryResponse {
@@ -85,6 +95,10 @@ export interface UserRecord {
   usagePercent: number;
   downloadBytes: number;
   uploadBytes: number;
+  currentCombinedBps?: number;
+  peakCombinedBps?: number;
+  peakAt?: string | null;
+  threshold?: 50 | 80 | 90 | 100 | null;
   lastUpdatedAt: string | null;
 }
 
@@ -103,9 +117,18 @@ export interface UserHistoryResponse {
 export interface TopUserItem {
   id: string;
   name: string;
+  group?: GroupKey;
+  subnet?: string;
   usedBytes: number;
+  remainingQuotaBytes?: number;
   usagePercent: number;
   state: UserState;
+  currentMaxLimit?: string | null;
+  currentCombinedBps?: number;
+  peakCombinedBps?: number;
+  peakAt?: string | null;
+  uploadBytes?: number;
+  downloadBytes?: number;
 }
 
 export interface TopUsersResponse {
@@ -122,6 +145,121 @@ export interface GroupUsageItem {
 export interface GroupUsageResponse {
   range: RangeOption;
   items: GroupUsageItem[];
+}
+
+export interface ActiveUser {
+  id: string;
+  name: string;
+  group: GroupKey;
+  subnet: string;
+  downloadBps: number;
+  uploadBps: number;
+  combinedBps: number;
+  currentMaxLimit: string | null;
+  state: UserState;
+  lastSnapshotAt: string | null;
+}
+
+export interface LiveDashboardResponse {
+  isps: Isp[];
+  topActiveUsers: ActiveUser[];
+}
+
+export interface AlertItem {
+  type: "quota" | "health" | "usage";
+  severity: "low" | "medium" | "high" | "critical";
+  title: string;
+  subject: string;
+  usagePercent?: number;
+  latencyMs?: number | null;
+  packetLossPercent?: number | null;
+  combinedBps?: number;
+  state?: UserState;
+}
+
+export interface AlertsResponse {
+  activeIssues: number;
+  quotaAlerts: AlertItem[];
+  healthAlerts: AlertItem[];
+  usageAlerts: AlertItem[];
+}
+
+export interface ComparisonMetric {
+  current: number;
+  previous: number;
+  changePercent: number | null;
+}
+
+export interface ComparisonBlock {
+  currentLabel: string;
+  previousLabel: string;
+  totalIspTraffic: ComparisonMetric;
+  totalUserTraffic: ComparisonMetric;
+  topUsers: Array<{ name: string; currentTotalBytes: number; previousTotalBytes: number; changePercent: number | null }>;
+  groupUsage: Array<{ groupName: string; currentTotalBytes: number; previousTotalBytes: number; changePercent: number | null }>;
+}
+
+export interface ComparisonsResponse {
+  todayVsYesterday: ComparisonBlock;
+  cycleVsPreviousCycle: ComparisonBlock;
+  last7dVsPrevious7d: ComparisonBlock;
+}
+
+export interface DistributionResponse {
+  range: RangeOption;
+  totalBytes: number;
+  items: Isp[];
+}
+
+export interface QuotaTimelineResponse {
+  summary: {
+    usedBytes: number;
+    remainingBytes: number;
+    quotaBytes: number;
+    usagePercent: number;
+  };
+  points: ThroughputPoint[];
+}
+
+export interface ThrottlingHistoryEntry {
+  id: string;
+  name: string;
+  group: GroupKey;
+  currentState: UserState;
+  lastStateChange: string | null;
+  throttledEvents: number;
+  transitions: Array<{ fromState: UserState; toState: UserState; changedAt: string }>;
+}
+
+export interface ThrottlingHistoryResponse {
+  items: ThrottlingHistoryEntry[];
+}
+
+export interface IspHealthHistoryResponse {
+  latest: {
+    latencyMs: number | null;
+    packetLossPercent: number | null;
+    jitterMs: number | null;
+    status: HealthStatus;
+    recordedAt: string | null;
+  };
+  averages: {
+    latencyMs: number | null;
+    packetLossPercent: number | null;
+  };
+  outages: {
+    count: number;
+    totalDowntimeMinutes: number;
+    items: Array<{ startedAt: string; endedAt: string | null; durationMinutes: number }>;
+  };
+  points: ThroughputPoint[];
+}
+
+export interface ReportsResponse {
+  topUsers: TopUserItem[];
+  ispDistribution: DistributionResponse;
+  alerts: AlertsResponse;
+  comparisons: ComparisonsResponse;
 }
 
 export interface LoginPayload {

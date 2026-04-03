@@ -17,32 +17,39 @@ import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useUserHistory, useUsers } from "@/features/users/api";
-import { formatBytes, formatChartTick, formatTimestamp } from "@/lib/utils";
+import { useQuotaTimeline, useThrottlingHistory, useUsers } from "@/features/users/api";
+import {
+  formatBitsPerSecond,
+  formatBytes,
+  formatChartTick,
+  formatPercentage,
+  formatTimestamp,
+} from "@/lib/utils";
 import { RangeOption } from "@/types/api";
 
 export function UserDetailPage() {
   const { userId = "" } = useParams();
   const [range, setRange] = useState<RangeOption>("cycle");
-  const query = useUserHistory(userId, range);
   const usersQuery = useUsers();
+  const quotaTimelineQuery = useQuotaTimeline(userId, range);
+  const throttlingQuery = useThrottlingHistory(userId, range);
 
-  if (query.isLoading || usersQuery.isLoading) {
+  if (usersQuery.isLoading || quotaTimelineQuery.isLoading || throttlingQuery.isLoading) {
     return <LoadingState label="Loading user detail..." />;
   }
 
-  if (query.isError || usersQuery.isError || !query.data) {
+  if (usersQuery.isError || quotaTimelineQuery.isError || throttlingQuery.isError || !quotaTimelineQuery.data) {
     return <ErrorState />;
   }
 
-  const { points } = query.data;
   const user = usersQuery.data?.items.find((item) => item.id === userId);
 
   if (!user) {
     return <ErrorState title="User not found" description="The selected user was not returned by the API." />;
   }
 
-  const monthlyQuotaBytes = user.quotaBytes;
+  const throttle = throttlingQuery.data?.items[0];
+  const timeline = quotaTimelineQuery.data;
 
   return (
     <div className="space-y-6">
@@ -66,39 +73,40 @@ export function UserDetailPage() {
             <p className="text-sm text-text-soft">Current max limit</p>
             <p className="mt-1 text-2xl font-semibold">{user.currentMaxLimit}</p>
           </div>
-          <QuotaProgressBar value={user.usagePercent} />
+          <QuotaProgressBar value={timeline.summary.usagePercent} />
         </div>
         <dl className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-2xl bg-surface px-4 py-4">
             <dt className="text-sm text-text-soft">Monthly quota</dt>
-            <dd className="mt-1 text-xl font-semibold">{formatBytes(monthlyQuotaBytes)}</dd>
+            <dd className="mt-1 text-xl font-semibold">{formatBytes(timeline.summary.quotaBytes)}</dd>
           </div>
           <div className="rounded-2xl bg-surface px-4 py-4">
             <dt className="text-sm text-text-soft">Used</dt>
-            <dd className="mt-1 text-xl font-semibold">{formatBytes(user.usedBytes)}</dd>
+            <dd className="mt-1 text-xl font-semibold">{formatBytes(timeline.summary.usedBytes)}</dd>
           </div>
           <div className="rounded-2xl bg-surface px-4 py-4">
             <dt className="text-sm text-text-soft">Remaining</dt>
-            <dd className="mt-1 text-xl font-semibold">{formatBytes(user.remainingBytes)}</dd>
+            <dd className="mt-1 text-xl font-semibold">{formatBytes(timeline.summary.remainingBytes)}</dd>
           </div>
           <div className="rounded-2xl bg-surface px-4 py-4">
             <dt className="text-sm text-text-soft">Usage</dt>
-            <dd className="mt-1 text-xl font-semibold">{user.usagePercent.toFixed(0)}%</dd>
+            <dd className="mt-1 text-xl font-semibold">{formatPercentage(timeline.summary.usagePercent, 1)}</dd>
           </div>
         </dl>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Download" value={formatBytes(user.downloadBytes)} />
         <StatCard label="Upload" value={formatBytes(user.uploadBytes)} />
-        <StatCard label="Profile Limit" value={user.currentMaxLimit ?? "--"} />
+        <StatCard label="Current Activity" value={formatBitsPerSecond(user.currentCombinedBps ?? 0)} />
+        <StatCard label="Peak Observed" value={formatBitsPerSecond(user.peakCombinedBps ?? 0)} helper={user.peakAt ? formatTimestamp(user.peakAt) : "No peak derived"} />
       </div>
 
-      <ChartCard title="Usage History" description="Usage history for the selected range.">
-        {points.length ? (
+      <ChartCard title="Quota Timeline" description="Cumulative growth within the selected range based on positive counter deltas.">
+        {timeline.points.length ? (
           <div className="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={points}>
+              <AreaChart data={timeline.points}>
                 <defs>
                   <linearGradient id="usageGradient" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="5%" stopColor="#0891b2" stopOpacity={0.55} />
@@ -108,23 +116,43 @@ export function UserDetailPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
                 <XAxis dataKey="timestamp" tickFormatter={formatChartTick} minTickGap={28} />
                 <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
-                <Tooltip
-                  labelFormatter={(value: string) => formatTimestamp(value)}
-                  formatter={(value: number) => formatBytes(value)}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="totalBytes"
-                  stroke="#0891b2"
-                  fillOpacity={1}
-                  fill="url(#usageGradient)"
-                  strokeWidth={3}
-                />
+                <Tooltip labelFormatter={(value: string) => formatTimestamp(value)} formatter={(value: number) => formatBytes(value)} />
+                <Area type="monotone" dataKey="cumulativeBytes" stroke="#0891b2" fillOpacity={1} fill="url(#usageGradient)" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         ) : (
           <EmptyState />
+        )}
+      </ChartCard>
+
+      <ChartCard title="Throttling History" description="Derived from state changes in queue snapshots.">
+        {throttle ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">Current state</p>
+              <div className="mt-2">
+                <StatusBadge status={throttle.currentState} />
+              </div>
+            </div>
+            <div className="rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">Last state change</p>
+              <p className="mt-2 font-semibold">{formatTimestamp(throttle.lastStateChange)}</p>
+            </div>
+            <div className="rounded-2xl bg-surface px-4 py-4">
+              <p className="text-sm text-text-soft">Throttled events</p>
+              <p className="mt-2 text-2xl font-semibold">{throttle.throttledEvents}</p>
+            </div>
+            <div className="md:col-span-3 space-y-3">
+              {throttle.transitions.map((transition) => (
+                <div key={transition.changedAt} className="rounded-2xl border border-line/80 bg-surface px-4 py-3 text-sm">
+                  {transition.fromState} to {transition.toState} at {formatTimestamp(transition.changedAt)}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <EmptyState description="No throttling transitions were derived for the selected range." />
         )}
       </ChartCard>
     </div>

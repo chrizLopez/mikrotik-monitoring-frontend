@@ -57,7 +57,7 @@ export function UserDetailPage() {
         <div>
           <p className="text-sm text-text-soft">{user.subnet}</p>
           <div className="mt-1 flex items-center gap-3">
-            <h1 className="text-3xl font-semibold">{user.name}</h1>
+            <h1 className="text-2xl font-semibold sm:text-3xl">{user.name}</h1>
             <StatusBadge status={user.state} />
           </div>
           <p className="mt-2 text-sm text-text-soft">
@@ -67,7 +67,7 @@ export function UserDetailPage() {
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
-      <section className="panel grid gap-6 p-5 xl:grid-cols-[1.1fr_0.9fr]">
+      <section className="panel grid gap-6 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
           <div>
             <p className="text-sm text-text-soft">Current max limit</p>
@@ -95,7 +95,7 @@ export function UserDetailPage() {
         </dl>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Download" value={formatBytes(user.downloadBytes)} />
         <StatCard label="Upload" value={formatBytes(user.uploadBytes)} />
         <StatCard label="Current Activity" value={formatBitsPerSecond(user.currentCombinedBps ?? 0)} />
@@ -104,7 +104,7 @@ export function UserDetailPage() {
 
       <ChartCard title="Quota Timeline" description="Cumulative growth within the selected range based on positive counter deltas.">
         {timeline.points.length ? (
-          <div className="h-[360px]">
+          <div className="h-[300px] sm:h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={timeline.points}>
                 <defs>

@@ -48,7 +48,7 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold">Users</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Users</h1>
           <p className="mt-2 text-sm text-text-soft">
             Search, filter, sort, and export customer reporting with quota thresholds and current activity.
           </p>
@@ -59,7 +59,7 @@ export function UsersPage() {
         </div>
       </div>
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {(topUsersQuery.data?.items ?? []).slice(0, 3).map((user) => (
           <Link key={user.id} to={`/users/${user.id}`} className="panel p-5 transition hover:-translate-y-0.5">
             <div className="flex items-center justify-between gap-3">
@@ -78,7 +78,7 @@ export function UsersPage() {
         ))}
       </section>
 
-      <section className="panel p-5">
+      <section className="panel p-4 sm:p-5">
         <div className="grid gap-4 xl:grid-cols-[1.4fr_repeat(3,0.8fr)]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-soft" />
@@ -130,7 +130,7 @@ export function UsersPage() {
         </div>
       </section>
 
-      <section className="panel p-5">
+      <section className="panel p-4 sm:p-5">
         <DataTable<UserRecord>
           columns={[
             {
@@ -168,6 +168,46 @@ export function UsersPage() {
           ]}
           rows={rows}
           getRowKey={(user) => user.id}
+          mobileCardRender={(user) => (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Link to={`/users/${user.id}`} className="font-medium text-accent">
+                    {user.name}
+                  </Link>
+                  <p className="text-xs text-text-soft">{user.subnet}</p>
+                </div>
+                <StatusBadge status={user.state} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-text-soft">Group</p>
+                  <p>{user.group.replace("_", " ")}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">Used</p>
+                  <p>{formatBytes(user.usedBytes)}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">Remaining</p>
+                  <p>{formatBytes(user.remainingBytes)}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">Usage</p>
+                  <p>{formatPercentage(user.usagePercent)}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">Current Limit</p>
+                  <p>{user.currentMaxLimit ?? "--"}</p>
+                </div>
+                <div>
+                  <p className="text-text-soft">Activity</p>
+                  <p>{formatBitsPerSecond(user.currentCombinedBps ?? 0)}</p>
+                </div>
+              </div>
+              <p className="text-xs text-text-soft">Updated {formatRelativeTime(user.lastUpdatedAt)}</p>
+            </div>
+          )}
           emptyState={<EmptyState description="No user rows match the current filters." />}
         />
       </section>

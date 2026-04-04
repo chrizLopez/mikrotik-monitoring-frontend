@@ -59,7 +59,7 @@ export function IspDetailPage() {
         <div>
           <p className="text-sm text-text-soft">{isp.interfaceName}</p>
           <div className="mt-1 flex items-center gap-3">
-            <h1 className="text-3xl font-semibold">{isp.name}</h1>
+            <h1 className="text-2xl font-semibold sm:text-3xl">{isp.name}</h1>
             <StatusBadge status={health.latest.status ?? isp.status} />
           </div>
           <p className="mt-2 text-sm text-text-soft">Last updated: {formatTimestamp(isp.lastUpdatedAt)}</p>
@@ -67,7 +67,7 @@ export function IspDetailPage() {
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {(ispsQuery.data?.items ?? []).map((item) => (
           <Link
             key={item.id}
@@ -79,14 +79,14 @@ export function IspDetailPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Current Download" value={formatBitsPerSecond(isp.currentRxBps)} />
         <StatCard label="Current Upload" value={formatBitsPerSecond(isp.currentTxBps)} />
         <StatCard label="Range Traffic" value={formatBytes(totals.combinedBytes)} />
         <StatCard label="Peak Snapshot" value={formatBitsPerSecond(Math.max(...points.map((point) => point.rxBps + point.txBps), 0))} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Latest Latency" value={formatLatency(health.latest.latencyMs)} />
         <StatCard label="Packet Loss" value={formatPercentage(health.latest.packetLossPercent ?? 0, 1)} />
         <StatCard label="Downtime" value={formatDurationMinutes(health.outages.totalDowntimeMinutes)} helper={`${health.outages.count} outages`} />
@@ -94,7 +94,7 @@ export function IspDetailPage() {
 
       <ChartCard title="Throughput History" description="RX/TX history for the selected range.">
         {points.length ? (
-          <div className="h-[360px]">
+          <div className="h-[300px] sm:h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={points}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
@@ -114,7 +114,7 @@ export function IspDetailPage() {
 
       <ChartCard title="Latency and Loss" description="Read-only ISP quality history from health snapshots.">
         {health.points.length ? (
-          <div className="h-[360px]">
+          <div className="h-[300px] sm:h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={health.points}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />

@@ -37,6 +37,7 @@ import {
   formatBitsPerSecond,
   formatBytes,
   formatPercentage,
+  formatRangeLabel,
   formatTimestamp,
 } from "@/lib/utils";
 import { ActiveUser, RangeOption, TopUserItem } from "@/types/api";
@@ -83,13 +84,14 @@ export function DashboardOverviewPage() {
   const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
   const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
   const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
+  const selectedRangeUsage = range === "cycle" ? summary.totals.totalUsageBytes : groupAUsage + groupBUsage;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
-          <h1 className="mt-1 text-3xl font-semibold">NOC Overview</h1>
+          <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
             WAN traffic, quota pressure, alerting, and customer activity from the current monitoring pipeline.
           </p>
@@ -98,7 +100,12 @@ export function DashboardOverviewPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Cycle Usage" value={formatBytes(summary.totals.totalUsageBytes)} icon={<GaugeCircle className="h-5 w-5" />} />
+        <StatCard
+          label={`${formatRangeLabel(range)} Usage`}
+          value={formatBytes(selectedRangeUsage)}
+          helper={range === "cycle" ? "Current billing cycle total" : "Derived from range-filtered user usage"}
+          icon={<GaugeCircle className="h-5 w-5" />}
+        />
         <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />
         <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
         <StatCard label="Active Issues" value={alerts.activeIssues} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
@@ -180,6 +187,37 @@ export function DashboardOverviewPage() {
             ]}
             rows={live.topActiveUsers}
             getRowKey={(row) => row.id}
+            mobileCardRender={(user) => (
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Link to={`/users/${user.id}`} className="font-medium text-accent">
+                      {user.name}
+                    </Link>
+                    <p className="text-xs text-text-soft">{user.subnet}</p>
+                  </div>
+                  <StatusBadge status={user.state} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-text-soft">Group</p>
+                    <p>{user.group.replace("_", " ")}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-soft">Combined</p>
+                    <p>{formatBitsPerSecond(user.combinedBps)}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-soft">Download</p>
+                    <p>{formatBitsPerSecond(user.downloadBps)}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-soft">Upload</p>
+                    <p>{formatBitsPerSecond(user.uploadBps)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             emptyState={<EmptyState description="No active user rate data is available yet." />}
           />
         </ChartCard>
@@ -203,7 +241,7 @@ export function DashboardOverviewPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="ISP Load Distribution" description="Traffic share across Old Starlink, New Starlink, and SmartBro.">
           {distribution.items.length ? (
-            <div className="h-80">
+            <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={distribution.items} dataKey="totalTrafficBytes" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={4}>
@@ -223,7 +261,7 @@ export function DashboardOverviewPage() {
 
         <ChartCard title="Top Consumers" description="Top usage by selected range.">
           {topUsersQuery.data?.items.length ? (
-            <div className="h-80">
+            <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topUsersQuery.data.items.slice(0, 10)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
@@ -243,7 +281,7 @@ export function DashboardOverviewPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="Group A vs Group B Trend" description="Selected-range group share with totals from positive deltas.">
           {groupUsageQuery.data?.items.length ? (
-            <div className="h-80">
+            <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={groupUsageQuery.data.items}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />

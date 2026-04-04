@@ -10,14 +10,14 @@ interface RangeSelectorProps {
 
 export function RangeSelector({ value, onChange }: RangeSelectorProps) {
   return (
-    <div className="inline-flex flex-wrap gap-2 rounded-2xl border border-line/80 bg-surface-soft p-1">
+    <div className="inline-flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-line/80 bg-surface-soft p-1">
       {options.map((option) => (
         <button
           key={option}
           type="button"
           onClick={() => onChange(option)}
           className={cn(
-            "rounded-xl px-3 py-2 text-sm transition",
+            "shrink-0 rounded-xl px-3 py-2 text-sm transition",
             value === option ? "bg-accent text-white" : "text-text-soft hover:bg-surface hover:text-text",
           )}
         >

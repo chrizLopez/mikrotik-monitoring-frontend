@@ -46,7 +46,7 @@ const ISP_COLORS = ["#0891b2", "#22c55e", "#f97316"];
 
 export function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
-  const summaryQuery = useDashboardSummary();
+  const summaryQuery = useDashboardSummary(range);
   const liveQuery = useDashboardLive();
   const distributionQuery = useIspDistribution(range);
   const topUsersQuery = useTopUsers(range);
@@ -84,7 +84,6 @@ export function DashboardOverviewPage() {
   const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
   const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
   const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
-  const selectedRangeUsage = range === "cycle" ? summary.totals.totalUsageBytes : groupAUsage + groupBUsage;
 
   return (
     <div className="space-y-6">
@@ -102,8 +101,8 @@ export function DashboardOverviewPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label={`${formatRangeLabel(range)} Usage`}
-          value={formatBytes(selectedRangeUsage)}
-          helper={range === "cycle" ? "Current billing cycle total" : "Derived from range-filtered user usage"}
+          value={formatBytes(summary.totals.totalUsageBytes)}
+          helper={range === "cycle" ? "Current billing cycle total" : "Directly from range-aware summary"}
           icon={<GaugeCircle className="h-5 w-5" />}
         />
         <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />

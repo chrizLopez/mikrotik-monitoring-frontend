@@ -5,7 +5,7 @@ import { useDashboardSummary } from "@/features/dashboard/api";
 import { formatTimestamp } from "@/lib/utils";
 
 export function StatusPage() {
-  const query = useDashboardSummary();
+  const query = useDashboardSummary("cycle");
 
   if (query.isLoading) {
     return <LoadingState label="Loading status..." />;

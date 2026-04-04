@@ -61,18 +61,20 @@ function mapIsp(item: Record<string, unknown>) {
   };
 }
 
-async function fetchSummary() {
-  const response = await api.get("/api/dashboard/summary");
+async function fetchSummary(range: RangeOption) {
+  const response = await api.get("/api/dashboard/summary", {
+    params: { range },
+  });
   const data = unwrapData(response.data as Record<string, unknown>);
 
   return {
-    range: "cycle",
+    range,
     billingCycleLabel:
       (data.current_billing_cycle as { label?: string } | undefined)?.label ?? "Current Cycle",
     lastPollAt: (data.last_poll_timestamp as string | null | undefined) ?? null,
     apiStatus: "online",
     totals: {
-      totalUsageBytes: Number(data.total_user_traffic_this_cycle ?? data.total_isp_traffic_this_cycle ?? 0),
+      totalUsageBytes: Number(data.total_user_traffic_for_range ?? data.total_user_traffic_this_cycle ?? 0),
       totalActiveUsers: Number(data.total_monitored_users ?? 0),
       throttledUsers: Number(data.throttled_user_count ?? 0),
       activeIsps: Number(data.active_isp_count ?? 0),
@@ -243,10 +245,10 @@ async function fetchReports(range: RangeOption) {
   } satisfies ReportsResponse;
 }
 
-export function useDashboardSummary() {
+export function useDashboardSummary(range: RangeOption) {
   return useQuery({
-    queryKey: ["dashboard", "summary"],
-    queryFn: fetchSummary,
+    queryKey: ["dashboard", "summary", range],
+    queryFn: () => fetchSummary(range),
   });
 }
 

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { OfflineStatusBanner } from "@/components/pwa/OfflineStatusBanner";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
@@ -13,6 +15,8 @@ export function AppShell() {
         <div className="flex min-w-0 flex-col">
           <TopBar onOpenMobileNav={() => setMobileNavOpen(true)} />
           <main className="flex-1 p-4 pb-24 sm:p-6 sm:pb-8 xl:p-8">
+            <OfflineStatusBanner />
+            <InstallBanner />
             <Outlet />
           </main>
         </div>

@@ -1,5 +1,6 @@
 import { LogOut, Menu, MoonStar, SunMedium } from "lucide-react";
 import { useEffect, useState } from "react";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { useAuth } from "@/features/auth/auth-context";
 
 interface TopBarProps {
@@ -33,6 +34,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+          <InstallAppButton />
           <button
             type="button"
             onClick={() => setDarkMode((current) => !current)}

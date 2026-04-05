@@ -1,6 +1,8 @@
-import { Activity, Bell, FileBarChart2, Gauge, Network, Router, Users, X } from "lucide-react";
+import { Activity, Bell, FileBarChart2, Gauge, LogOut, MoonStar, Network, Router, SunMedium, Users, X } from "lucide-react";
 import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { useAuth } from "@/features/auth/auth-context";
 import { useDashboardIsps } from "@/features/dashboard/api";
 import { cn } from "@/lib/utils";
 
@@ -13,11 +15,14 @@ const baseNavigation = [
 ];
 
 interface SidebarProps {
+  darkMode: boolean;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onToggleDarkMode: () => void;
 }
 
-export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
+export function Sidebar({ darkMode, mobileOpen, onCloseMobile, onToggleDarkMode }: SidebarProps) {
+  const { user, logout } = useAuth();
   const ispsQuery = useDashboardIsps();
   const defaultIspTarget = ispsQuery.data?.items[0]?.id ?? "ether1";
   const navigation = [
@@ -117,6 +122,30 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
+
+        <div className="mt-6 space-y-3 border-t border-line/80 pt-4">
+          <InstallAppButton />
+          <button
+            type="button"
+            onClick={onToggleDarkMode}
+            className="flex w-full items-center gap-3 rounded-2xl border border-line/80 bg-surface px-4 py-3 text-sm font-medium text-text-soft transition hover:text-text"
+          >
+            {darkMode ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+            <span>{darkMode ? "Light mode" : "Dark mode"}</span>
+          </button>
+          <div className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+            <p className="text-xs text-text-soft">Signed in as</p>
+            <p className="mt-1 break-all text-sm font-medium">{user?.email ?? "Admin"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-danger px-4 py-3 text-sm font-medium text-white transition hover:bg-danger/90"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-surface-soft/95 px-2 py-2 backdrop-blur lg:hidden">

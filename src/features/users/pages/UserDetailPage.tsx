@@ -22,6 +22,7 @@ import {
   formatBitsPerSecond,
   formatBytes,
   formatChartTick,
+  formatDisplayName,
   formatPercentage,
   formatTimestamp,
 } from "@/lib/utils";
@@ -57,7 +58,7 @@ export function UserDetailPage() {
         <div>
           <p className="text-sm text-text-soft">{user.subnet}</p>
           <div className="mt-1 flex items-center gap-3">
-            <h1 className="text-2xl font-semibold sm:text-3xl">{user.name}</h1>
+            <h1 className="text-2xl font-semibold sm:text-3xl">{formatDisplayName(user.name)}</h1>
             <StatusBadge status={user.state} />
           </div>
           <p className="mt-2 text-sm text-text-soft">

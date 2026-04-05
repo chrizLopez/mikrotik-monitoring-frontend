@@ -114,3 +114,12 @@ export function formatChartTick(value: string) {
     minute: "2-digit",
   }).format(date);
 }
+
+export function formatDisplayName(value: string | null | undefined) {
+  if (!value) return "--";
+
+  return value
+    .replace(/^VLAN\d+\s*-\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

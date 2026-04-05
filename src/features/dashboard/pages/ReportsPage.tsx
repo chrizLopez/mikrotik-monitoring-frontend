@@ -7,7 +7,7 @@ import { ExportButton } from "@/components/ExportButton";
 import { LoadingState } from "@/components/LoadingState";
 import { RangeSelector } from "@/components/RangeSelector";
 import { useReports } from "@/features/dashboard/api";
-import { formatBytes, formatPercentage } from "@/lib/utils";
+import { formatBytes, formatDisplayName, formatPercentage } from "@/lib/utils";
 import { useState } from "react";
 import { RangeOption } from "@/types/api";
 
@@ -50,7 +50,7 @@ export function ReportsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={query.data.topUsers}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
-                  <XAxis dataKey="name" angle={-18} textAnchor="end" height={72} />
+                  <XAxis dataKey="name" angle={-18} textAnchor="end" height={72} tickFormatter={formatDisplayName} />
                   <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
                   <Tooltip formatter={(value: number) => formatBytes(value)} />
                   <Bar dataKey="usedBytes" fill="#0891b2" radius={[8, 8, 0, 0]} />

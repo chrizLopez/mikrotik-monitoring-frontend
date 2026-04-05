@@ -10,7 +10,14 @@ import { RangeSelector } from "@/components/RangeSelector";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTopUsers } from "@/features/dashboard/api";
 import { useUsers } from "@/features/users/api";
-import { formatBitsPerSecond, formatBytes, formatPercentage, formatRelativeTime, formatTimestamp } from "@/lib/utils";
+import {
+  formatBitsPerSecond,
+  formatBytes,
+  formatDisplayName,
+  formatPercentage,
+  formatRelativeTime,
+  formatTimestamp,
+} from "@/lib/utils";
 import { GroupKey, RangeOption, UserRecord, UserState } from "@/types/api";
 
 type SortKey = "usedBytes" | "remainingBytes" | "usagePercent";
@@ -65,7 +72,7 @@ export function UsersPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-text-soft">Top consumer</p>
-                <h3 className="mt-1 text-lg font-semibold">{user.name}</h3>
+                <h3 className="mt-1 text-lg font-semibold">{formatDisplayName(user.name)}</h3>
               </div>
               <Zap className="h-4 w-4 text-accent" />
             </div>
@@ -139,7 +146,7 @@ export function UsersPage() {
               render: (user) => (
                 <div>
                   <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                    {user.name}
+                    {formatDisplayName(user.name)}
                   </Link>
                   <p className="text-xs text-text-soft">{formatTimestamp(user.lastUpdatedAt)}</p>
                 </div>
@@ -173,7 +180,7 @@ export function UsersPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                    {user.name}
+                    {formatDisplayName(user.name)}
                   </Link>
                   <p className="text-xs text-text-soft">{user.subnet}</p>
                 </div>

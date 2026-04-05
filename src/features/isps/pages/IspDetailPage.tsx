@@ -92,7 +92,7 @@ export function IspDetailPage() {
         <StatCard label="Downtime" value={formatDurationMinutes(health.outages.totalDowntimeMinutes)} helper={`${health.outages.count} outages`} />
       </div>
 
-      <ChartCard title="Throughput History" description="RX/TX history for the selected range.">
+      <ChartCard title="Throughput History" description="Download/upload history for the selected range.">
         {points.length ? (
           <div className="h-[300px] sm:h-[360px]">
             <ResponsiveContainer width="100%" height="100%">

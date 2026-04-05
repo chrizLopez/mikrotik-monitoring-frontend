@@ -36,6 +36,7 @@ import {
 import {
   formatBitsPerSecond,
   formatBytes,
+  formatDisplayName,
   formatPercentage,
   formatRangeLabel,
   formatTimestamp,
@@ -137,11 +138,11 @@ export function DashboardOverviewPage() {
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-text-soft">RX</p>
+                  <p className="text-text-soft">Download</p>
                   <p className="font-semibold">{formatBitsPerSecond(isp.currentRxBps)}</p>
                 </div>
                 <div>
-                  <p className="text-text-soft">TX</p>
+                  <p className="text-text-soft">Upload</p>
                   <p className="font-semibold">{formatBitsPerSecond(isp.currentTxBps)}</p>
                 </div>
                 <div className="col-span-2">
@@ -172,7 +173,7 @@ export function DashboardOverviewPage() {
                 render: (user) => (
                   <div>
                     <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                      {user.name}
+                      {formatDisplayName(user.name)}
                     </Link>
                     <p className="text-xs text-text-soft">{user.subnet}</p>
                   </div>
@@ -191,7 +192,7 @@ export function DashboardOverviewPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                      {user.name}
+                      {formatDisplayName(user.name)}
                     </Link>
                     <p className="text-xs text-text-soft">{user.subnet}</p>
                   </div>
@@ -313,7 +314,7 @@ export function DashboardOverviewPage() {
               <div className="mt-3 space-y-2">
                 {comparisons.topUsers.map((item) => (
                   <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
-                    <span>{item.name}</span>
+                    <span>{formatDisplayName(item.name)}</span>
                     <span className="text-text-soft">
                       {formatBytes(item.currentTotalBytes)} / {formatPercentage(item.changePercent ?? 0, 1)}
                     </span>

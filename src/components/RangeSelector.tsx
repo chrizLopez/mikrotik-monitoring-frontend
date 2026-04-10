@@ -1,7 +1,7 @@
 import { RangeOption } from "@/types/api";
 import { cn, formatRangeLabel } from "@/lib/utils";
 
-const options: RangeOption[] = ["today", "24h", "7d", "30d", "cycle"];
+const options: RangeOption[] = ["10m", "1h", "24h", "7d", "30d", "cycle"];
 
 interface RangeSelectorProps {
   value: RangeOption;

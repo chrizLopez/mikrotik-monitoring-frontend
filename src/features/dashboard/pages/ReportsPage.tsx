@@ -6,20 +6,22 @@ import { ErrorState } from "@/components/ErrorState";
 import { ExportButton } from "@/components/ExportButton";
 import { LoadingState } from "@/components/LoadingState";
 import { RangeSelector } from "@/components/RangeSelector";
-import { useReports } from "@/features/dashboard/api";
+import { useComparisons, useIspDistribution, useTopUsers } from "@/features/dashboard/api";
 import { formatBytes, formatDisplayName, formatPercentage } from "@/lib/utils";
 import { useState } from "react";
 import { RangeOption } from "@/types/api";
 
 export function ReportsPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
-  const query = useReports(range);
+  const topUsersQuery = useTopUsers(range);
+  const distributionQuery = useIspDistribution(range);
+  const comparisonsQuery = useComparisons();
 
-  if (query.isLoading) {
+  if (topUsersQuery.isLoading || distributionQuery.isLoading || comparisonsQuery.isLoading) {
     return <LoadingState label="Loading reports..." />;
   }
 
-  if (query.isError || !query.data) {
+  if (topUsersQuery.isError || distributionQuery.isError || comparisonsQuery.isError || !topUsersQuery.data || !distributionQuery.data || !comparisonsQuery.data) {
     return <ErrorState />;
   }
 
@@ -45,10 +47,10 @@ export function ReportsPage() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="Top Consumers" description="Selected-range customer consumption.">
-          {query.data.topUsers.length ? (
+          {topUsersQuery.data.items.length ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={query.data.topUsers}>
+                <BarChart data={topUsersQuery.data.items}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
                   <XAxis dataKey="name" angle={-18} textAnchor="end" height={72} tickFormatter={formatDisplayName} />
                   <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
@@ -64,7 +66,7 @@ export function ReportsPage() {
 
         <ChartCard title="WAN Distribution" description="Traffic share by ISP for the selected range.">
           <div className="space-y-3">
-            {query.data.ispDistribution.items.map((isp) => (
+            {distributionQuery.data.items.map((isp) => (
               <div key={isp.id} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <Link to={`/isps/${isp.id}`} className="font-medium text-accent">
@@ -79,17 +81,17 @@ export function ReportsPage() {
         </ChartCard>
       </div>
 
-      <ChartCard title="Historical Comparison" description={`${query.data.comparisons.cycleVsPreviousCycle.currentLabel} versus ${query.data.comparisons.cycleVsPreviousCycle.previousLabel}.`}>
+      <ChartCard title="Historical Comparison" description={`${comparisonsQuery.data.cycleVsPreviousCycle.currentLabel} versus ${comparisonsQuery.data.cycleVsPreviousCycle.previousLabel}.`}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl bg-surface px-4 py-4">
             <p className="text-sm text-text-soft">ISP traffic</p>
-            <p className="mt-2 text-2xl font-semibold">{formatBytes(query.data.comparisons.cycleVsPreviousCycle.totalIspTraffic.current)}</p>
-            <p className="text-sm text-text-soft">Change {formatPercentage(query.data.comparisons.cycleVsPreviousCycle.totalIspTraffic.changePercent ?? 0, 1)}</p>
+            <p className="mt-2 text-2xl font-semibold">{formatBytes(comparisonsQuery.data.cycleVsPreviousCycle.totalIspTraffic.current)}</p>
+            <p className="text-sm text-text-soft">Change {formatPercentage(comparisonsQuery.data.cycleVsPreviousCycle.totalIspTraffic.changePercent ?? 0, 1)}</p>
           </div>
           <div className="rounded-2xl bg-surface px-4 py-4">
             <p className="text-sm text-text-soft">User traffic</p>
-            <p className="mt-2 text-2xl font-semibold">{formatBytes(query.data.comparisons.cycleVsPreviousCycle.totalUserTraffic.current)}</p>
-            <p className="text-sm text-text-soft">Change {formatPercentage(query.data.comparisons.cycleVsPreviousCycle.totalUserTraffic.changePercent ?? 0, 1)}</p>
+            <p className="mt-2 text-2xl font-semibold">{formatBytes(comparisonsQuery.data.cycleVsPreviousCycle.totalUserTraffic.current)}</p>
+            <p className="text-sm text-text-soft">Change {formatPercentage(comparisonsQuery.data.cycleVsPreviousCycle.totalUserTraffic.changePercent ?? 0, 1)}</p>
           </div>
         </div>
       </ChartCard>

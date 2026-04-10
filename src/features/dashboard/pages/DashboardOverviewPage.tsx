@@ -55,34 +55,19 @@ export function DashboardOverviewPage() {
   const alertsQuery = useAlerts(range);
   const comparisonsQuery = useComparisons();
 
-  if (
-    summaryQuery.isLoading ||
-    liveQuery.isLoading ||
-    distributionQuery.isLoading ||
-    topUsersQuery.isLoading ||
-    alertsQuery.isLoading ||
-    comparisonsQuery.isLoading
-  ) {
+  if (summaryQuery.isLoading) {
     return <LoadingState label="Loading NOC overview..." />;
   }
 
-  if (
-    summaryQuery.isError ||
-    liveQuery.isError ||
-    distributionQuery.isError ||
-    topUsersQuery.isError ||
-    alertsQuery.isError ||
-    comparisonsQuery.isError ||
-    !summaryQuery.data
-  ) {
+  if (summaryQuery.isError || !summaryQuery.data) {
     return <ErrorState onRetry={() => window.location.reload()} />;
   }
 
   const summary = summaryQuery.data;
-  const live = liveQuery.data!;
-  const distribution = distributionQuery.data!;
-  const alerts = alertsQuery.data!;
-  const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
+  const live = liveQuery.data;
+  const distribution = distributionQuery.data;
+  const alerts = alertsQuery.data;
+  const comparisons = comparisonsQuery.data?.cycleVsPreviousCycle;
   const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
   const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
 
@@ -108,7 +93,7 @@ export function DashboardOverviewPage() {
         />
         <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />
         <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
-        <StatCard label="Active Issues" value={alerts.activeIssues} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
+        <StatCard label="Active Issues" value={alerts?.activeIssues ?? "--"} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
         <StatCard
           label="Group A Usage"
           value={formatBytes(groupAUsage)}
@@ -124,123 +109,133 @@ export function DashboardOverviewPage() {
       </div>
 
       <ChartCard title="Live WAN Traffic" description="Current WAN throughput by interface with recent sparkline samples.">
-        <div className="grid gap-4 xl:grid-cols-3">
-          {live.isps.map((isp, index) => (
-            <div key={isp.id} className="rounded-2xl border border-line/80 bg-surface p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-text-soft">{isp.interfaceName}</p>
-                  <Link to={`/isps/${isp.id}`} className="mt-1 block text-lg font-semibold text-accent">
-                    {isp.name}
-                  </Link>
+        {liveQuery.isError ? <ErrorState title="Live WAN traffic unavailable" description="Current WAN cards failed to load, but the rest of the dashboard is still available." /> : null}
+        {live ? (
+          <div className="grid gap-4 xl:grid-cols-3">
+            {live.isps.map((isp, index) => (
+              <div key={isp.id} className="rounded-2xl border border-line/80 bg-surface p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-text-soft">{isp.interfaceName}</p>
+                    <Link to={`/isps/${isp.id}`} className="mt-1 block text-lg font-semibold text-accent">
+                      {isp.name}
+                    </Link>
+                  </div>
+                  <StatusBadge status={isp.status} />
                 </div>
-                <StatusBadge status={isp.status} />
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-text-soft">Download</p>
+                    <p className="font-semibold">{formatBitsPerSecond(isp.currentRxBps)}</p>
+                  </div>
+                  <div>
+                    <p className="text-text-soft">Upload</p>
+                    <p className="font-semibold">{formatBitsPerSecond(isp.currentTxBps)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-text-soft">Combined</p>
+                    <p className="font-semibold">{formatBitsPerSecond(isp.currentTotalBps ?? 0)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 h-24">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={isp.trend ?? []}>
+                      <Line dataKey="totalBps" type="monotone" stroke={ISP_COLORS[index % ISP_COLORS.length]} strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="mt-2 text-xs text-text-soft">{formatTimestamp(isp.lastUpdatedAt)}</p>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-text-soft">Download</p>
-                  <p className="font-semibold">{formatBitsPerSecond(isp.currentRxBps)}</p>
-                </div>
-                <div>
-                  <p className="text-text-soft">Upload</p>
-                  <p className="font-semibold">{formatBitsPerSecond(isp.currentTxBps)}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-text-soft">Combined</p>
-                  <p className="font-semibold">{formatBitsPerSecond(isp.currentTotalBps ?? 0)}</p>
-                </div>
-              </div>
-              <div className="mt-4 h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={isp.trend ?? []}>
-                    <Line dataKey="totalBps" type="monotone" stroke={ISP_COLORS[index % ISP_COLORS.length]} strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <p className="mt-2 text-xs text-text-soft">{formatTimestamp(isp.lastUpdatedAt)}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
       </ChartCard>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <ChartCard title="Top Active Users Right Now" description="Short-window derived download and upload rates from recent queue snapshots.">
-          <DataTable<ActiveUser>
-            columns={[
-              {
-                key: "name",
-                label: "User",
-                render: (user) => (
-                  <div>
-                    <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                      {formatDisplayName(user.name)}
-                    </Link>
-                    <p className="text-xs text-text-soft">{user.subnet}</p>
+          {liveQuery.isError ? <ErrorState title="Active user rates unavailable" description="The live users section timed out or failed." /> : null}
+          {live ? (
+            <DataTable<ActiveUser>
+              columns={[
+                {
+                  key: "name",
+                  label: "User",
+                  render: (user) => (
+                    <div>
+                      <Link to={`/users/${user.id}`} className="font-medium text-accent">
+                        {formatDisplayName(user.name)}
+                      </Link>
+                      <p className="text-xs text-text-soft">{user.subnet}</p>
+                    </div>
+                  ),
+                },
+                { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
+                { key: "down", label: "Download", render: (user) => formatBitsPerSecond(user.downloadBps) },
+                { key: "up", label: "Upload", render: (user) => formatBitsPerSecond(user.uploadBps) },
+                { key: "combined", label: "Combined", render: (user) => formatBitsPerSecond(user.combinedBps) },
+                { key: "state", label: "State", render: (user) => <StatusBadge status={user.state} /> },
+              ]}
+              rows={live.topActiveUsers}
+              getRowKey={(row) => row.id}
+              mobileCardRender={(user) => (
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Link to={`/users/${user.id}`} className="font-medium text-accent">
+                        {formatDisplayName(user.name)}
+                      </Link>
+                      <p className="text-xs text-text-soft">{user.subnet}</p>
+                    </div>
+                    <StatusBadge status={user.state} />
                   </div>
-                ),
-              },
-              { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
-              { key: "down", label: "Download", render: (user) => formatBitsPerSecond(user.downloadBps) },
-              { key: "up", label: "Upload", render: (user) => formatBitsPerSecond(user.uploadBps) },
-              { key: "combined", label: "Combined", render: (user) => formatBitsPerSecond(user.combinedBps) },
-              { key: "state", label: "State", render: (user) => <StatusBadge status={user.state} /> },
-            ]}
-            rows={live.topActiveUsers}
-            getRowKey={(row) => row.id}
-            mobileCardRender={(user) => (
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <Link to={`/users/${user.id}`} className="font-medium text-accent">
-                      {formatDisplayName(user.name)}
-                    </Link>
-                    <p className="text-xs text-text-soft">{user.subnet}</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-text-soft">Group</p>
+                      <p>{user.group.replace("_", " ")}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-soft">Combined</p>
+                      <p>{formatBitsPerSecond(user.combinedBps)}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-soft">Download</p>
+                      <p>{formatBitsPerSecond(user.downloadBps)}</p>
+                    </div>
+                    <div>
+                      <p className="text-text-soft">Upload</p>
+                      <p>{formatBitsPerSecond(user.uploadBps)}</p>
+                    </div>
                   </div>
-                  <StatusBadge status={user.state} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-text-soft">Group</p>
-                    <p>{user.group.replace("_", " ")}</p>
-                  </div>
-                  <div>
-                    <p className="text-text-soft">Combined</p>
-                    <p>{formatBitsPerSecond(user.combinedBps)}</p>
-                  </div>
-                  <div>
-                    <p className="text-text-soft">Download</p>
-                    <p>{formatBitsPerSecond(user.downloadBps)}</p>
-                  </div>
-                  <div>
-                    <p className="text-text-soft">Upload</p>
-                    <p>{formatBitsPerSecond(user.uploadBps)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            emptyState={<EmptyState description="No active user rate data is available yet." />}
-          />
+              )}
+              emptyState={<EmptyState description="No active user rate data is available yet." />}
+            />
+          ) : null}
         </ChartCard>
 
         <ChartCard title="Alert Summary" description="Derived quota, health, and unusual-usage insights.">
-          <div className="space-y-3">
-            {[...alerts.healthAlerts, ...alerts.quotaAlerts, ...alerts.usageAlerts].slice(0, 6).map((alert) => (
-              <div key={`${alert.type}-${alert.title}`} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">{alert.title}</p>
-                  <span className="text-xs uppercase tracking-wide text-text-soft">{alert.severity}</span>
+          {alertsQuery.isError ? <ErrorState title="Alerts unavailable" description="Alert calculation failed for this refresh." /> : null}
+          {alerts ? (
+            <div className="space-y-3">
+              {[...alerts.healthAlerts, ...alerts.quotaAlerts, ...alerts.usageAlerts].slice(0, 6).map((alert) => (
+                <div key={`${alert.type}-${alert.title}`} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{alert.title}</p>
+                    <span className="text-xs uppercase tracking-wide text-text-soft">{alert.severity}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-text-soft">{alert.subject}</p>
                 </div>
-                <p className="mt-1 text-sm text-text-soft">{alert.subject}</p>
-              </div>
-            ))}
-            {!alerts.healthAlerts.length && !alerts.quotaAlerts.length && !alerts.usageAlerts.length ? <EmptyState description="No active alerts in the selected range." /> : null}
-          </div>
+              ))}
+              {!alerts.healthAlerts.length && !alerts.quotaAlerts.length && !alerts.usageAlerts.length ? <EmptyState description="No active alerts in the selected range." /> : null}
+            </div>
+          ) : null}
         </ChartCard>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="ISP Load Distribution" description="Traffic share across Old Starlink, New Starlink, and SmartBro.">
-          {distribution.items.length ? (
+          {distributionQuery.isError ? <ErrorState title="Distribution unavailable" description="Traffic distribution failed to load for this range." /> : null}
+          {distribution?.items.length ? (
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -260,6 +255,7 @@ export function DashboardOverviewPage() {
         </ChartCard>
 
         <ChartCard title="Top Consumers" description="Top usage by selected range.">
+          {topUsersQuery.isError ? <ErrorState title="Top consumers unavailable" description="Top user aggregation failed for this range." /> : null}
           {topUsersQuery.data?.items.length ? (
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -297,32 +293,35 @@ export function DashboardOverviewPage() {
           )}
         </ChartCard>
 
-        <ChartCard title="Cycle Comparison" description={`${comparisons.currentLabel} against ${comparisons.previousLabel}.`}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl bg-surface px-4 py-4">
-              <p className="text-sm text-text-soft">ISP traffic</p>
-              <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalIspTraffic.current)}</p>
-              <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalIspTraffic.changePercent ?? 0, 1)}</p>
-            </div>
-            <div className="rounded-2xl bg-surface px-4 py-4">
-              <p className="text-sm text-text-soft">User traffic</p>
-              <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalUserTraffic.current)}</p>
-              <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalUserTraffic.changePercent ?? 0, 1)}</p>
-            </div>
-            <div className="md:col-span-2 rounded-2xl bg-surface px-4 py-4">
-              <p className="text-sm text-text-soft">Top user movement</p>
-              <div className="mt-3 space-y-2">
-                {comparisons.topUsers.map((item) => (
-                  <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
-                    <span>{formatDisplayName(item.name)}</span>
-                    <span className="text-text-soft">
-                      {formatBytes(item.currentTotalBytes)} / {formatPercentage(item.changePercent ?? 0, 1)}
-                    </span>
-                  </div>
-                ))}
+        <ChartCard title="Cycle Comparison" description={comparisons ? `${comparisons.currentLabel} against ${comparisons.previousLabel}.` : "Current cycle against the previous cycle."}>
+          {comparisonsQuery.isError || !comparisons ? <ErrorState title="Comparison unavailable" description="Historical comparison could not be loaded." /> : null}
+          {comparisons ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl bg-surface px-4 py-4">
+                <p className="text-sm text-text-soft">ISP traffic</p>
+                <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalIspTraffic.current)}</p>
+                <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalIspTraffic.changePercent ?? 0, 1)}</p>
+              </div>
+              <div className="rounded-2xl bg-surface px-4 py-4">
+                <p className="text-sm text-text-soft">User traffic</p>
+                <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalUserTraffic.current)}</p>
+                <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalUserTraffic.changePercent ?? 0, 1)}</p>
+              </div>
+              <div className="md:col-span-2 rounded-2xl bg-surface px-4 py-4">
+                <p className="text-sm text-text-soft">Top user movement</p>
+                <div className="mt-3 space-y-2">
+                  {comparisons.topUsers.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
+                      <span>{formatDisplayName(item.name)}</span>
+                      <span className="text-text-soft">
+                        {formatBytes(item.currentTotalBytes)} / {formatPercentage(item.changePercent ?? 0, 1)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </ChartCard>
       </div>
     </div>

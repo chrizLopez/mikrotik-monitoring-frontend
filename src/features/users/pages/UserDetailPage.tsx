@@ -17,7 +17,7 @@ import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useQuotaTimeline, useThrottlingHistory, useUsers } from "@/features/users/api";
+import { useQuotaTimeline, useThrottlingHistory, useUser } from "@/features/users/api";
 import {
   formatBitsPerSecond,
   formatBytes,
@@ -31,23 +31,19 @@ import { RangeOption } from "@/types/api";
 export function UserDetailPage() {
   const { userId = "" } = useParams();
   const [range, setRange] = useState<RangeOption>("cycle");
-  const usersQuery = useUsers();
+  const userQuery = useUser(userId);
   const quotaTimelineQuery = useQuotaTimeline(userId, range);
   const throttlingQuery = useThrottlingHistory(userId, range);
 
-  if (usersQuery.isLoading || quotaTimelineQuery.isLoading || throttlingQuery.isLoading) {
+  if (userQuery.isLoading || quotaTimelineQuery.isLoading || throttlingQuery.isLoading) {
     return <LoadingState label="Loading user detail..." />;
   }
 
-  if (usersQuery.isError || quotaTimelineQuery.isError || throttlingQuery.isError || !quotaTimelineQuery.data) {
+  if (userQuery.isError || quotaTimelineQuery.isError || throttlingQuery.isError || !quotaTimelineQuery.data || !userQuery.data) {
     return <ErrorState />;
   }
 
-  const user = usersQuery.data?.items.find((item) => item.id === userId);
-
-  if (!user) {
-    return <ErrorState title="User not found" description="The selected user was not returned by the API." />;
-  }
+  const user = userQuery.data;
 
   const throttle = throttlingQuery.data?.items[0];
   const timeline = quotaTimelineQuery.data;

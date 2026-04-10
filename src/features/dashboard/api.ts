@@ -7,9 +7,9 @@ import {
   DistributionResponse,
   DashboardSummaryResponse,
   GroupUsageResponse,
+  Isp,
   LiveDashboardResponse,
   RangeOption,
-  ReportsResponse,
   TopUsersResponse,
 } from "@/types/api";
 
@@ -58,7 +58,7 @@ function mapIsp(item: Record<string, unknown>) {
           totalBps: Number(point.total_bps ?? 0),
         }))
       : undefined,
-  };
+  } satisfies Isp;
 }
 
 async function fetchSummary(range: RangeOption) {
@@ -91,6 +91,13 @@ async function fetchIsps() {
     range: "cycle",
     items: data.map(mapIsp),
   } satisfies DashboardIspsResponse;
+}
+
+async function fetchIsp(ispId: string) {
+  const response = await api.get(`/api/dashboard/isps/${ispId}`);
+  const data = unwrapData<Record<string, unknown>>(response.data);
+
+  return mapIsp(data);
 }
 
 async function fetchTopUsers(range: RangeOption) {
@@ -234,21 +241,12 @@ async function fetchComparisons() {
   } satisfies ComparisonsResponse;
 }
 
-async function fetchReports(range: RangeOption) {
-  await api.get("/api/dashboard/reports", { params: { range } });
-
-  return {
-    topUsers: await fetchTopUsers(range).then((value) => value.items),
-    ispDistribution: await fetchDistribution(range),
-    alerts: await fetchAlerts(range),
-    comparisons: await fetchComparisons(),
-  } satisfies ReportsResponse;
-}
-
 export function useDashboardSummary(range: RangeOption) {
   return useQuery({
     queryKey: ["dashboard", "summary", range],
     queryFn: () => fetchSummary(range),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -257,6 +255,16 @@ export function useDashboardIsps() {
     queryKey: ["dashboard", "isps"],
     queryFn: fetchIsps,
     refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
+export function useDashboardIsp(ispId: string) {
+  return useQuery({
+    queryKey: ["dashboard", "isps", ispId],
+    queryFn: () => fetchIsp(ispId),
+    enabled: Boolean(ispId),
+    staleTime: 15_000,
   });
 }
 
@@ -264,6 +272,7 @@ export function useTopUsers(range: RangeOption) {
   return useQuery({
     queryKey: ["dashboard", "top-users", range],
     queryFn: () => fetchTopUsers(range),
+    staleTime: 60_000,
   });
 }
 
@@ -271,6 +280,7 @@ export function useGroupUsage(range: RangeOption) {
   return useQuery({
     queryKey: ["dashboard", "groups", range],
     queryFn: () => fetchGroupUsage(range),
+    staleTime: 60_000,
   });
 }
 
@@ -279,6 +289,7 @@ export function useDashboardLive() {
     queryKey: ["dashboard", "live"],
     queryFn: fetchLive,
     refetchInterval: 30_000,
+    staleTime: 15_000,
   });
 }
 
@@ -286,6 +297,7 @@ export function useIspDistribution(range: RangeOption) {
   return useQuery({
     queryKey: ["dashboard", "isps", "distribution", range],
     queryFn: () => fetchDistribution(range),
+    staleTime: 60_000,
   });
 }
 
@@ -294,6 +306,7 @@ export function useAlerts(range: RangeOption) {
     queryKey: ["dashboard", "alerts", range],
     queryFn: () => fetchAlerts(range),
     refetchInterval: 30_000,
+    staleTime: 15_000,
   });
 }
 
@@ -301,12 +314,6 @@ export function useComparisons() {
   return useQuery({
     queryKey: ["dashboard", "comparisons"],
     queryFn: fetchComparisons,
-  });
-}
-
-export function useReports(range: RangeOption) {
-  return useQuery({
-    queryKey: ["dashboard", "reports", range],
-    queryFn: () => fetchReports(range),
+    staleTime: 300_000,
   });
 }

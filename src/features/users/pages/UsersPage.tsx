@@ -1,5 +1,5 @@
 import { ArrowUpDown, Search, Zap } from "lucide-react";
-import { startTransition, useDeferredValue, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useState } from "react";
 import { Link } from "react-router-dom";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -23,25 +23,25 @@ import { GroupKey, RangeOption, UserRecord, UserState } from "@/types/api";
 type SortKey = "usedBytes" | "remainingBytes" | "usagePercent";
 
 export function UsersPage() {
-  const query = useUsers();
   const [range, setRange] = useState<RangeOption>("cycle");
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState<"ALL" | GroupKey>("ALL");
   const [stateFilter, setStateFilter] = useState<"ALL" | UserState>("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("usedBytes");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const deferredSearch = useDeferredValue(search);
+  const query = useUsers({
+    page,
+    perPage: pageSize,
+    search: deferredSearch,
+    group: groupFilter,
+    state: stateFilter,
+    sort: sortKey,
+  });
   const topUsersQuery = useTopUsers(range);
-
-  const rows = useMemo(() => {
-    const users = query.data?.items ?? [];
-    const normalizedSearch = deferredSearch.trim().toLowerCase();
-
-    return [...users]
-      .filter((user) => !normalizedSearch || user.name.toLowerCase().includes(normalizedSearch))
-      .filter((user) => groupFilter === "ALL" || user.group === groupFilter)
-      .filter((user) => stateFilter === "ALL" || user.state === stateFilter)
-      .sort((left, right) => right[sortKey] - left[sortKey]);
-  }, [deferredSearch, groupFilter, query.data?.items, sortKey, stateFilter]);
+  const rows = query.data?.items ?? [];
+  const pagination = query.data?.meta;
 
   if (query.isLoading) {
     return <LoadingState label="Loading users..." />;
@@ -94,6 +94,7 @@ export function UsersPage() {
               onChange={(event) =>
                 startTransition(() => {
                   setSearch(event.target.value);
+                  setPage(1);
                 })
               }
               placeholder="Search by user name"
@@ -102,7 +103,10 @@ export function UsersPage() {
           </label>
           <select
             value={groupFilter}
-            onChange={(event) => setGroupFilter(event.target.value as "ALL" | GroupKey)}
+            onChange={(event) => {
+              setGroupFilter(event.target.value as "ALL" | GroupKey);
+              setPage(1);
+            }}
             className="rounded-2xl border-line bg-surface px-4 py-3"
           >
             <option value="ALL">All groups</option>
@@ -111,7 +115,10 @@ export function UsersPage() {
           </select>
           <select
             value={stateFilter}
-            onChange={(event) => setStateFilter(event.target.value as "ALL" | UserState)}
+            onChange={(event) => {
+              setStateFilter(event.target.value as "ALL" | UserState);
+              setPage(1);
+            }}
             className="rounded-2xl border-line bg-surface px-4 py-3"
           >
             <option value="ALL">All states</option>
@@ -121,13 +128,15 @@ export function UsersPage() {
           <button
             type="button"
             onClick={() =>
-              setSortKey((current) =>
-                current === "usedBytes"
+              setSortKey((current) => {
+                setPage(1);
+
+                return current === "usedBytes"
                   ? "remainingBytes"
                   : current === "remainingBytes"
                     ? "usagePercent"
-                    : "usedBytes",
-              )
+                    : "usedBytes";
+              })
             }
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-line/80 bg-surface px-4 py-3 text-sm font-medium"
           >
@@ -217,6 +226,51 @@ export function UsersPage() {
           )}
           emptyState={<EmptyState description="No user rows match the current filters." />}
         />
+        {pagination ? (
+          <div className="mt-4 flex flex-col gap-3 border-t border-line/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-text-soft">
+              Showing {pagination.from ?? 0}-{pagination.to ?? 0} of {pagination.total}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-text-soft">
+                <span>Rows</span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded-xl border-line bg-surface px-3 py-2 text-text"
+                >
+                  {[10, 15, 25, 50].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={pagination.currentPage <= 1 || query.isFetching}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                className="rounded-xl border border-line/80 bg-surface px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-text-soft">
+                Page {pagination.currentPage} of {pagination.lastPage}
+              </span>
+              <button
+                type="button"
+                disabled={pagination.currentPage >= pagination.lastPage || query.isFetching}
+                onClick={() => setPage((current) => Math.min(pagination.lastPage, current + 1))}
+                className="rounded-xl border border-line/80 bg-surface px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );

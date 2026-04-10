@@ -1,4 +1,4 @@
-export type RangeOption = "today" | "24h" | "7d" | "30d" | "cycle" | "prev_cycle";
+export type RangeOption = "10m" | "1h" | "today" | "24h" | "7d" | "30d" | "cycle" | "prev_cycle";
 export type UserState = "NORMAL" | "THROTTLED";
 export type GroupKey = "GROUP_A" | "GROUP_B";
 export type HealthStatus = "online" | "offline" | "degraded";
@@ -105,6 +105,7 @@ export interface UserRecord {
 export interface DashboardUsersResponse {
   range: RangeOption;
   items: UserRecord[];
+  meta: PaginationMeta;
 }
 
 export interface UserHistoryResponse {
@@ -260,6 +261,25 @@ export interface ReportsResponse {
   ispDistribution: DistributionResponse;
   alerts: AlertsResponse;
   comparisons: ComparisonsResponse;
+}
+
+export interface PaginationMeta {
+  currentPage: number;
+  lastPage: number;
+  perPage: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+export interface UsersQueryParams {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  group?: "ALL" | GroupKey;
+  state?: "ALL" | UserState;
+  sort?: "name" | "usedBytes" | "remainingBytes" | "usagePercent" | "lastUpdated";
+  direction?: "asc" | "desc";
 }
 
 export interface LoginPayload {

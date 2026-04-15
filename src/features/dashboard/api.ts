@@ -41,6 +41,11 @@ function mapIsp(item: Record<string, unknown>) {
     id: String(item.id),
     name: String(item.name ?? "Unknown ISP"),
     interfaceName: String(item.interface_name ?? "--"),
+    gateway: (item.gateway as string | null | undefined) ?? null,
+    connectionMark: (item.connection_mark as string | null | undefined) ?? null,
+    routingMark: (item.routing_mark as string | null | undefined) ?? null,
+    sharePercentTarget: item.share_percent_target == null ? null : Number(item.share_percent_target),
+    architectureRole: (item.architecture_role as string | null | undefined) ?? null,
     status: normalizeHealthStatus(item.status),
     currentRxBps: Number(item.current_rx_bps ?? 0),
     currentTxBps: Number(item.current_tx_bps ?? 0),
@@ -73,6 +78,29 @@ async function fetchSummary(range: RangeOption) {
       (data.current_billing_cycle as { label?: string } | undefined)?.label ?? "Current Cycle",
     lastPollAt: (data.last_poll_timestamp as string | null | undefined) ?? null,
     apiStatus: "online",
+    networkModel: {
+      mode: String((data.network_model as Record<string, unknown> | undefined)?.mode ?? "shared_equal_pcc"),
+      summary: String((data.network_model as Record<string, unknown> | undefined)?.summary ?? ""),
+      distributionLabel: String((data.network_model as Record<string, unknown> | undefined)?.distribution_label ?? "33.33% / 33.33% / 33.33%"),
+      wanCount: Number((data.network_model as Record<string, unknown> | undefined)?.wan_count ?? 3),
+      isGroupRoutingEnabled: Boolean((data.network_model as Record<string, unknown> | undefined)?.is_group_routing_enabled ?? false),
+      priorityAppsStatus: String((data.network_model as Record<string, unknown> | undefined)?.priority_apps_status ?? "planned"),
+      streamingShapingStatus: String((data.network_model as Record<string, unknown> | undefined)?.streaming_shaping_status ?? "planned"),
+      retiredFeatures: Array.isArray((data.network_model as Record<string, unknown> | undefined)?.retired_features)
+        ? ((data.network_model as Record<string, unknown>).retired_features as unknown[]).map((item) => String(item))
+        : [],
+      wans: Array.isArray((data.network_model as Record<string, unknown> | undefined)?.wans)
+        ? ((data.network_model as Record<string, unknown>).wans as Array<Record<string, unknown>>).map((item) => ({
+            name: String(item.name ?? "Unknown ISP"),
+            interfaceName: String(item.interface_name ?? "--"),
+            gateway: String(item.gateway ?? "--"),
+            connectionMark: String(item.connection_mark ?? "--"),
+            routingMark: String(item.routing_mark ?? "--"),
+            displayOrder: Number(item.display_order ?? 0),
+            sharePercent: Number(item.share_percent ?? 0),
+          }))
+        : [],
+    },
     totals: {
       totalUsageBytes: Number(data.total_user_traffic_for_range ?? data.total_user_traffic_this_cycle ?? 0),
       totalActiveUsers: Number(data.total_monitored_users ?? 0),

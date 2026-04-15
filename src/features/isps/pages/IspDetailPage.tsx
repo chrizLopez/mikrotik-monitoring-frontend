@@ -38,17 +38,36 @@ export function IspDetailPage() {
   const ispQuery = useDashboardIsp(ispId);
   const ispsQuery = useDashboardIsps();
 
-  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading || ispQuery.isLoading) {
+  if (query.isLoading || ispQuery.isLoading) {
     return <LoadingState label="Loading ISP detail..." />;
   }
 
-  if (query.isError || healthQuery.isError || ispsQuery.isError || ispQuery.isError || !query.data || !healthQuery.data || !ispQuery.data) {
+  if (query.isError || ispQuery.isError || !query.data || !ispQuery.data) {
     return <ErrorState />;
   }
 
   const { totals, points } = query.data;
-  const health = healthQuery.data;
   const isp = ispQuery.data;
+  const health = healthQuery.data ?? {
+    latest: {
+      latencyMs: null,
+      packetLossPercent: null,
+      jitterMs: null,
+      status: isp.status,
+      recordedAt: null,
+    },
+    averages: {
+      latencyMs: null,
+      packetLossPercent: null,
+    },
+    outages: {
+      count: 0,
+      totalDowntimeMinutes: 0,
+      items: [],
+    },
+    points: [],
+  };
+  const ispNavigationItems = ispsQuery.data?.items?.length ? ispsQuery.data.items : [isp];
 
   return (
     <div className="space-y-6">
@@ -59,13 +78,16 @@ export function IspDetailPage() {
             <h1 className="text-2xl font-semibold sm:text-3xl">{isp.name}</h1>
             <StatusBadge status={health.latest.status ?? isp.status} />
           </div>
-          <p className="mt-2 text-sm text-text-soft">Last updated: {formatTimestamp(isp.lastUpdatedAt)}</p>
+          <p className="mt-2 text-sm text-text-soft">
+            {isp.gateway ? `Gateway ${isp.gateway} | ` : ""}
+            Shared PCC member with failover. Last updated: {formatTimestamp(isp.lastUpdatedAt)}
+          </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {(ispsQuery.data?.items ?? []).map((item) => (
+        {ispNavigationItems.map((item) => (
           <Link
             key={item.id}
             to={`/isps/${item.id}`}
@@ -110,7 +132,11 @@ export function IspDetailPage() {
       </ChartCard>
 
       <ChartCard title="Latency and Loss" description="Read-only ISP quality history from health snapshots.">
-        {health.points.length ? (
+        {healthQuery.isLoading ? (
+          <LoadingState label="Loading ISP health..." />
+        ) : healthQuery.isError ? (
+          <ErrorState title="ISP health history unavailable" description="Health snapshots failed to load for this ISP." />
+        ) : health.points.length ? (
           <div className="h-[300px] sm:h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={health.points}>
@@ -131,7 +157,7 @@ export function IspDetailPage() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <EmptyState description="No ISP health history has been recorded yet." />
+          <EmptyState description="No ISP health snapshots have been recorded yet. This graph fills only when backend polling stores ping data or push ingestion includes a health payload." />
         )}
       </ChartCard>
     </div>

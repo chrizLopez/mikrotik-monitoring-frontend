@@ -64,7 +64,7 @@ export function ReportsPage() {
           )}
         </ChartCard>
 
-        <ChartCard title="WAN Distribution" description="Traffic share by ISP for the selected range.">
+        <ChartCard title="WAN Distribution" description="Observed traffic share by shared PCC WAN for the selected range.">
           <div className="space-y-3">
             {distributionQuery.data.items.map((isp) => (
               <div key={isp.id} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">

@@ -78,7 +78,7 @@ export function DashboardOverviewPage() {
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            WAN traffic, quota pressure, alerting, and customer activity from the current monitoring pipeline.
+            Shared 3-WAN PCC visibility for throughput, quota pressure, failover health, and customer activity.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
@@ -98,15 +98,62 @@ export function DashboardOverviewPage() {
           label="Group A Usage"
           value={formatBytes(groupAUsage)}
           icon={<Users className="h-5 w-5" />}
-          helper="Home Router, Camaymayan, and Rutor"
+          helper="Organizational label only: Home Router, Camaymayan, and Rutor"
         />
         <StatCard
           label="Group B Usage"
           value={formatBytes(groupBUsage)}
           icon={<Users className="h-5 w-5" />}
-          helper="Remaining monitored users"
+          helper="Organizational label only: remaining monitored users"
         />
       </div>
+
+      <ChartCard
+        title="Network Model"
+        description="Live architecture summary from the backend contract. Group labels remain available for reporting only."
+      >
+        <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-line/80 bg-surface p-4">
+            <p className="text-sm text-text-soft">{summary.networkModel.summary}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">Active WANs</p>
+                <p className="mt-1 font-semibold">{summary.networkModel.wanCount}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">Distribution</p>
+                <p className="mt-1 font-semibold">{summary.networkModel.distributionLabel}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">Routing Groups</p>
+                <p className="mt-1 font-semibold">
+                  {summary.networkModel.isGroupRoutingEnabled ? "Enabled" : "Retired"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-soft">Future Layers</p>
+                <p className="mt-1 font-semibold">Priority apps and streaming shaping planned</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3">
+            {summary.networkModel.wans.map((wan) => (
+              <div key={wan.interfaceName} className="rounded-2xl border border-line/80 bg-surface px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-text-soft">{wan.interfaceName}</p>
+                    <p className="mt-1 font-semibold">{wan.name}</p>
+                  </div>
+                  <p className="text-sm font-medium">{formatPercentage(wan.sharePercent, 2)}</p>
+                </div>
+                <p className="mt-2 text-sm text-text-soft">
+                  Gateway {wan.gateway} | {wan.connectionMark} | {wan.routingMark}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </ChartCard>
 
       <ChartCard title="Live WAN Traffic" description="Current WAN throughput by interface with recent sparkline samples.">
         {liveQuery.isError ? <ErrorState title="Live WAN traffic unavailable" description="Current WAN cards failed to load, but the rest of the dashboard is still available." /> : null}
@@ -120,6 +167,7 @@ export function DashboardOverviewPage() {
                     <Link to={`/isps/${isp.id}`} className="mt-1 block text-lg font-semibold text-accent">
                       {isp.name}
                     </Link>
+                    <p className="mt-1 text-xs text-text-soft">{isp.gateway ? `Gateway ${isp.gateway}` : "Shared PCC WAN"}</p>
                   </div>
                   <StatusBadge status={isp.status} />
                 </div>
@@ -233,7 +281,7 @@ export function DashboardOverviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard title="ISP Load Distribution" description="Traffic share across Old Starlink, New Starlink, and SmartBro.">
+        <ChartCard title="ISP Load Distribution" description="Observed traffic share across the three shared PCC WANs.">
           {distributionQuery.isError ? <ErrorState title="Distribution unavailable" description="Traffic distribution failed to load for this range." /> : null}
           {distribution?.items.length ? (
             <div className="h-72 sm:h-80">

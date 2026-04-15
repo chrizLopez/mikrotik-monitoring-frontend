@@ -48,12 +48,12 @@ export function LoginPage() {
         <section className="hidden bg-slate-950 px-10 py-12 text-slate-100 lg:block">
           <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">MikroTik Monitoring</p>
           <h1 className="mt-6 text-4xl font-semibold leading-tight">
-            Track WAN health, user quotas, and throttling from one control surface.
+            Track shared PCC WAN health, per-subnet quotas, and throttling from one control surface.
           </h1>
           <div className="mt-10 grid gap-4">
             {[
-              "Live throughput cards for Old Starlink, New Starlink, and SmartBro.",
-              "Cycle-aware quota monitoring for Group A and Group B users.",
+              "Live throughput cards for Gomo, Starlink ISP New, and Smart Bro ISP.",
+              "Cycle-aware quota monitoring for independent subnet queues across the shared 3-WAN model.",
               "Export-friendly reporting for operations and billing checks.",
             ].map((item) => (
               <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">

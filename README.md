@@ -80,7 +80,9 @@ src/
 - Authentication expects Laravel session endpoints at `/api/login`, `/api/logout`, and `/api/me`.
 - Axios is configured with `withCredentials: true` for cookie-based auth.
 - The frontend assumes normalized backend values and keeps business logic focused on presentation, filtering, and chart UX.
-- `GROUP_A_TOTAL` should remain excluded by the backend from normal customer user rows.
+- The UI reflects the shared 3-WAN PCC model: Gomo, Starlink ISP New, and Smart Bro ISP.
+- Group A and Group B remain reporting labels only and do not imply WAN assignment.
+- `GROUP_A_TOTAL` should not appear in monitored user rows.
 
 ## PWA
 

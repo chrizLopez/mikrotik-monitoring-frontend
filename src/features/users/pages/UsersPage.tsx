@@ -57,7 +57,7 @@ export function UsersPage() {
         <div>
           <h1 className="text-2xl font-semibold sm:text-3xl">Users</h1>
           <p className="mt-2 text-sm text-text-soft">
-            Search, filter, sort, and export customer reporting with quota thresholds and current activity.
+            Search, filter, sort, and export per-subnet queue reporting. Group labels are organizational only and do not imply WAN routing.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -226,6 +226,11 @@ export function UsersPage() {
           )}
           emptyState={<EmptyState description="No user rows match the current filters." />}
         />
+        {!rows.some((user) => user.name === "GROUP_A_TOTAL") ? (
+          <p className="mt-4 text-xs text-text-soft">
+            Independent subnet queues only. Retired parent queues such as GROUP_A_TOTAL are not part of monitored user reporting.
+          </p>
+        ) : null}
         {pagination ? (
           <div className="mt-4 flex flex-col gap-3 border-t border-line/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-text-soft">

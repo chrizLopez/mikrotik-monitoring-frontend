@@ -26,6 +26,25 @@ export interface DashboardSummaryResponse {
   billingCycleLabel: string;
   lastPollAt: string | null;
   apiStatus: "online" | "offline" | "degraded";
+  networkModel: {
+    mode: string;
+    summary: string;
+    distributionLabel: string;
+    wanCount: number;
+    isGroupRoutingEnabled: boolean;
+    priorityAppsStatus: string;
+    streamingShapingStatus: string;
+    retiredFeatures: string[];
+    wans: Array<{
+      name: string;
+      interfaceName: string;
+      gateway: string;
+      connectionMark: string;
+      routingMark: string;
+      displayOrder: number;
+      sharePercent: number;
+    }>;
+  };
   totals: {
     totalUsageBytes: number;
     totalActiveUsers: number;
@@ -54,6 +73,11 @@ export interface Isp {
   id: string;
   name: string;
   interfaceName: string;
+  gateway?: string | null;
+  connectionMark?: string | null;
+  routingMark?: string | null;
+  sharePercentTarget?: number | null;
+  architectureRole?: string | null;
   status: HealthStatus;
   currentRxBps: number;
   currentTxBps: number;

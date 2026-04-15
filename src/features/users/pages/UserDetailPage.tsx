@@ -58,7 +58,7 @@ export function UserDetailPage() {
             <StatusBadge status={user.state} />
           </div>
           <p className="mt-2 text-sm text-text-soft">
-            {user.group.replace("_", " ")} | Last updated {formatTimestamp(user.lastUpdatedAt)}
+            {user.group.replace("_", " ")} reporting label only | Shared 3-WAN PCC user | Last updated {formatTimestamp(user.lastUpdatedAt)}
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />

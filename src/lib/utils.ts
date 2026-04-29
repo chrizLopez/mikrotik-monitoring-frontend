@@ -88,6 +88,10 @@ export function formatRelativeTime(value: string | null | undefined) {
 
 export function formatRangeLabel(range: string) {
   switch (range) {
+    case "10m":
+      return "Last 10 Minutes";
+    case "1h":
+      return "Last 1 Hour";
     case "today":
       return "Today";
     case "24h":

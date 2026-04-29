@@ -93,6 +93,7 @@ export function useIspHistory(ispId: string, range: RangeOption) {
     queryFn: () => fetchIspHistory(ispId, range),
     enabled: Boolean(ispId),
     refetchInterval: 30_000,
+    staleTime: 30_000,
   });
 }
 
@@ -102,5 +103,6 @@ export function useIspHealthHistory(ispId: string, range: RangeOption) {
     queryFn: () => fetchIspHealthHistory(ispId, range),
     enabled: Boolean(ispId),
     refetchInterval: 30_000,
+    staleTime: 30_000,
   });
 }

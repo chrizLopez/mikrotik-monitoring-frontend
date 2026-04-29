@@ -17,7 +17,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useDashboardIsps } from "@/features/dashboard/api";
+import { useDashboardIsp, useDashboardIsps } from "@/features/dashboard/api";
 import { useIspHealthHistory, useIspHistory } from "@/features/isps/api";
 import {
   formatBitsPerSecond,
@@ -35,23 +35,20 @@ export function IspDetailPage() {
   const [range, setRange] = useState<RangeOption>("24h");
   const query = useIspHistory(ispId, range);
   const healthQuery = useIspHealthHistory(ispId, range);
+  const ispQuery = useDashboardIsp(ispId);
   const ispsQuery = useDashboardIsps();
 
-  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading) {
+  if (query.isLoading || healthQuery.isLoading || ispsQuery.isLoading || ispQuery.isLoading) {
     return <LoadingState label="Loading ISP detail..." />;
   }
 
-  if (query.isError || healthQuery.isError || ispsQuery.isError || !query.data || !healthQuery.data) {
+  if (query.isError || healthQuery.isError || ispsQuery.isError || ispQuery.isError || !query.data || !healthQuery.data || !ispQuery.data) {
     return <ErrorState />;
   }
 
   const { totals, points } = query.data;
   const health = healthQuery.data;
-  const isp = ispsQuery.data?.items.find((item) => item.id === ispId || item.interfaceName === ispId);
-
-  if (!isp) {
-    return <ErrorState title="ISP not found" description="The selected ISP was not returned by the API." />;
-  }
+  const isp = ispQuery.data;
 
   return (
     <div className="space-y-6">

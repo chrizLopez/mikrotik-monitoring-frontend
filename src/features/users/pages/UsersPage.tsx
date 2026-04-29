@@ -22,6 +22,10 @@ import { GroupKey, RangeOption, UserRecord, UserState } from "@/types/api";
 
 type SortKey = "usedBytes" | "remainingBytes" | "usagePercent";
 
+function groupLabel(group: GroupKey) {
+  return group === "STARLINK_GROUP" ? "Starlink Group" : "Smart Group";
+}
+
 export function UsersPage() {
   const query = useUsers();
   const [range, setRange] = useState<RangeOption>("cycle");
@@ -57,7 +61,7 @@ export function UsersPage() {
         <div>
           <h1 className="text-2xl font-semibold sm:text-3xl">Users</h1>
           <p className="mt-2 text-sm text-text-soft">
-            Search, filter, sort, and export customer reporting with quota thresholds and current activity.
+            Search, filter, sort, and export customer reporting with Starlink Group and Smart Group activity.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -106,8 +110,8 @@ export function UsersPage() {
             className="rounded-2xl border-line bg-surface px-4 py-3"
           >
             <option value="ALL">All groups</option>
-            <option value="GROUP_A">Group A</option>
-            <option value="GROUP_B">Group B</option>
+            <option value="STARLINK_GROUP">Starlink Group</option>
+            <option value="SMART_GROUP">Smart Group</option>
           </select>
           <select
             value={stateFilter}
@@ -153,7 +157,7 @@ export function UsersPage() {
               ),
             },
             { key: "subnet", label: "Subnet", render: (user) => user.subnet },
-            { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
+            { key: "group", label: "Group", render: (user) => groupLabel(user.group) },
             { key: "used", label: "Used", render: (user) => formatBytes(user.usedBytes) },
             { key: "remaining", label: "Remaining", render: (user) => formatBytes(user.remainingBytes) },
             {
@@ -189,7 +193,7 @@ export function UsersPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <p className="text-text-soft">Group</p>
-                  <p>{user.group.replace("_", " ")}</p>
+                  <p>{groupLabel(user.group)}</p>
                 </div>
                 <div>
                   <p className="text-text-soft">Used</p>

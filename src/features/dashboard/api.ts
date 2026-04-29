@@ -22,7 +22,7 @@ function unwrapData<T>(payload: T | { data: T }) {
 }
 
 function normalizeGroup(value: string | null | undefined) {
-  return value === "Group A" ? "GROUP_A" : "GROUP_B";
+  return value === "Starlink Group" ? "STARLINK_GROUP" : "SMART_GROUP";
 }
 
 function normalizeHealthStatus(value: unknown): "online" | "offline" | "degraded" {
@@ -80,6 +80,55 @@ async function fetchSummary(range: RangeOption) {
       activeIsps: Number(data.active_isp_count ?? 0),
     },
     cards: [],
+    groupPolicies: Array.isArray(data.group_policies)
+      ? (data.group_policies as Array<Record<string, unknown>>).map((item) => ({
+          key: normalizeGroup(item.label as string | undefined),
+          label: String(item.label ?? ""),
+          subnets: Array.isArray(item.subnets) ? item.subnets.map((subnet) => String(subnet)) : [],
+          policy: {
+            starlink: Number((item.policy as Record<string, unknown> | undefined)?.starlink ?? 0),
+            smart_a: Number((item.policy as Record<string, unknown> | undefined)?.smart_a ?? 0),
+            smart_b: Number((item.policy as Record<string, unknown> | undefined)?.smart_b ?? 0),
+          },
+        }))
+      : [],
+    starlinkUsage: data.starlink_usage && typeof data.starlink_usage === "object"
+      ? {
+          label: String((data.starlink_usage as Record<string, unknown>).label ?? "Starlink"),
+          usedBytes: Number((data.starlink_usage as Record<string, unknown>).used_bytes ?? 0),
+          capBytes: Number((data.starlink_usage as Record<string, unknown>).cap_bytes ?? 0),
+          usagePercent: Number((data.starlink_usage as Record<string, unknown>).usage_percent ?? 0),
+          averageDailyBytes: Number((data.starlink_usage as Record<string, unknown>).average_daily_bytes ?? 0),
+          projectedMonthlyBytes: Number((data.starlink_usage as Record<string, unknown>).projected_monthly_bytes ?? 0),
+          daysElapsed: Number((data.starlink_usage as Record<string, unknown>).days_elapsed ?? 0),
+          daysInMonth: Number((data.starlink_usage as Record<string, unknown>).days_in_month ?? 0),
+          dailyTrend: Array.isArray((data.starlink_usage as Record<string, unknown>).daily_points)
+            ? ((data.starlink_usage as Record<string, unknown>).daily_points as Array<Record<string, unknown>>).map((point) => ({
+                date: String(point.date ?? ""),
+                totalBytes: Number(point.total_bytes ?? 0),
+              }))
+            : [],
+          thresholds: Array.isArray((data.starlink_usage as Record<string, unknown>).thresholds)
+            ? ((data.starlink_usage as Record<string, unknown>).thresholds as Array<Record<string, unknown>>).map((threshold) => ({
+                percent: Number(threshold.percent ?? 0),
+                reached: Boolean(threshold.reached),
+              }))
+            : [],
+        }
+      : null,
+    smartbroTotal: data.smartbro_total && typeof data.smartbro_total === "object"
+      ? {
+          label: String((data.smartbro_total as Record<string, unknown>).label ?? "SmartBro Total"),
+          usedBytes: Number((data.smartbro_total as Record<string, unknown>).used_bytes ?? 0),
+          items: Array.isArray((data.smartbro_total as Record<string, unknown>).items)
+            ? ((data.smartbro_total as Record<string, unknown>).items as Array<Record<string, unknown>>).map((item) => ({
+                label: String(item.label ?? ""),
+                usedBytes: Number(item.used_bytes ?? 0),
+              }))
+            : [],
+        }
+      : null,
+    distributionNote: (data.distribution_note as string | null | undefined) ?? null,
   } satisfies DashboardSummaryResponse;
 }
 
@@ -130,6 +179,13 @@ async function fetchGroupUsage(range: RangeOption) {
     range,
     items: data.map((item) => ({
       group: normalizeGroup(item.group_name as string | undefined),
+      label: String(item.group_name ?? ""),
+      subnets: Array.isArray(item.subnets) ? item.subnets.map((subnet) => String(subnet)) : [],
+      policy: {
+        starlink: Number((item.policy as Record<string, unknown> | undefined)?.starlink ?? 0),
+        smart_a: Number((item.policy as Record<string, unknown> | undefined)?.smart_a ?? 0),
+        smart_b: Number((item.policy as Record<string, unknown> | undefined)?.smart_b ?? 0),
+      },
       totalBytes: Number(item.total_bytes ?? 0),
       users: Number(item.user_count ?? 0),
     })),

@@ -52,8 +52,9 @@ export function LoginPage() {
           </h1>
           <div className="mt-10 grid gap-4">
             {[
-              "Live throughput cards for Old Starlink, New Starlink, and SmartBro.",
-              "Cycle-aware quota monitoring for Group A and Group B users.",
+              "Live throughput cards for Starlink, SmartBro A, and SmartBro B.",
+              "Cycle-aware monitoring for Starlink Group and Smart Group users.",
+              "Starlink 500GB monthly tracking with projection and warning thresholds.",
               "Export-friendly reporting for operations and billing checks.",
             ].map((item) => (
               <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">

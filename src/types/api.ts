@@ -1,6 +1,6 @@
 export type RangeOption = "today" | "24h" | "7d" | "30d" | "cycle" | "prev_cycle";
 export type UserState = "NORMAL" | "THROTTLED";
-export type GroupKey = "GROUP_A" | "GROUP_B";
+export type GroupKey = "STARLINK_GROUP" | "SMART_GROUP";
 export type HealthStatus = "online" | "offline" | "degraded";
 
 export interface AuthUser {
@@ -33,6 +33,34 @@ export interface DashboardSummaryResponse {
     activeIsps: number;
   };
   cards: SummaryStat[];
+  groupPolicies: Array<{
+    key: GroupKey;
+    label: string;
+    subnets: string[];
+    policy: {
+      starlink?: number;
+      smart_a?: number;
+      smart_b?: number;
+    };
+  }>;
+  starlinkUsage: {
+    label: string;
+    usedBytes: number;
+    capBytes: number;
+    usagePercent: number;
+    averageDailyBytes: number;
+    projectedMonthlyBytes: number;
+    daysElapsed: number;
+    daysInMonth: number;
+    dailyTrend: Array<{ date: string; totalBytes: number }>;
+    thresholds: Array<{ percent: number; reached: boolean }>;
+  } | null;
+  smartbroTotal: {
+    label: string;
+    usedBytes: number;
+    items: Array<{ label: string; usedBytes: number }>;
+  } | null;
+  distributionNote: string | null;
 }
 
 export interface ThroughputPoint {
@@ -138,6 +166,13 @@ export interface TopUsersResponse {
 
 export interface GroupUsageItem {
   group: GroupKey;
+  label: string;
+  subnets: string[];
+  policy: {
+    starlink?: number;
+    smart_a?: number;
+    smart_b?: number;
+  };
   totalBytes: number;
   users: number;
 }

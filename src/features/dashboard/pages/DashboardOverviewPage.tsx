@@ -21,6 +21,7 @@ import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
 import { LoadingState } from "@/components/LoadingState";
+import { QuotaProgressBar } from "@/components/QuotaProgressBar";
 import { RangeSelector } from "@/components/RangeSelector";
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -41,9 +42,13 @@ import {
   formatRangeLabel,
   formatTimestamp,
 } from "@/lib/utils";
-import { ActiveUser, RangeOption, TopUserItem } from "@/types/api";
+import { ActiveUser, GroupKey, RangeOption } from "@/types/api";
 
 const ISP_COLORS = ["#0891b2", "#22c55e", "#f97316"];
+
+function getGroupLabel(group: GroupKey) {
+  return group === "STARLINK_GROUP" ? "Starlink Group" : "Smart Group";
+}
 
 export function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
@@ -83,8 +88,10 @@ export function DashboardOverviewPage() {
   const distribution = distributionQuery.data!;
   const alerts = alertsQuery.data!;
   const comparisons = comparisonsQuery.data!.cycleVsPreviousCycle;
-  const groupAUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_A")?.totalBytes ?? 0;
-  const groupBUsage = groupUsageQuery.data?.items.find((item) => item.group === "GROUP_B")?.totalBytes ?? 0;
+  const starlinkGroupUsage = groupUsageQuery.data?.items.find((item) => item.group === "STARLINK_GROUP")?.totalBytes ?? 0;
+  const smartGroupUsage = groupUsageQuery.data?.items.find((item) => item.group === "SMART_GROUP")?.totalBytes ?? 0;
+  const starlinkUsage = summary.starlinkUsage;
+  const smartbroTotal = summary.smartbroTotal;
 
   return (
     <div className="space-y-6">
@@ -93,7 +100,7 @@ export function DashboardOverviewPage() {
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            WAN traffic, quota pressure, alerting, and customer activity from the current monitoring pipeline.
+            WAN traffic, Starlink cap pressure, SmartBro distribution, and user activity for the current weighted PCC design.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
@@ -101,26 +108,92 @@ export function DashboardOverviewPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <StatCard
+          label="Starlink Usage This Month"
+          value={formatBytes(starlinkUsage?.usedBytes ?? 0)}
+          helper={starlinkUsage ? `${formatPercentage(starlinkUsage.usagePercent, 1)} of ${formatBytes(starlinkUsage.capBytes)} cap` : "Waiting for Starlink usage data"}
+          icon={<GaugeCircle className="h-5 w-5" />}
+        />
+        <StatCard
+          label="SmartBro Total This Month"
+          value={formatBytes(smartbroTotal?.usedBytes ?? 0)}
+          helper={smartbroTotal?.items.map((item) => `${item.label}: ${formatBytes(item.usedBytes)}`).join(" • ") ?? "Combined SmartBro A and SmartBro B"}
+          icon={<Activity className="h-5 w-5" />}
+        />
+        <StatCard
           label={`${formatRangeLabel(range)} Usage`}
           value={formatBytes(summary.totals.totalUsageBytes)}
           helper={range === "cycle" ? "Current billing cycle total" : "Directly from range-aware summary"}
           icon={<GaugeCircle className="h-5 w-5" />}
         />
         <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />
-        <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
         <StatCard label="Active Issues" value={alerts.activeIssues} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
-        <StatCard
-          label="Group A Usage"
-          value={formatBytes(groupAUsage)}
-          icon={<Users className="h-5 w-5" />}
-          helper="Home Router, Camaymayan, and Rutor"
-        />
-        <StatCard
-          label="Group B Usage"
-          value={formatBytes(groupBUsage)}
-          icon={<Users className="h-5 w-5" />}
-          helper="Remaining monitored users"
-        />
+        <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
+        <StatCard label="Starlink Group Usage" value={formatBytes(starlinkGroupUsage)} helper="Home Router, VLAN20, VLAN30, and VLAN40" icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Smart Group Usage" value={formatBytes(smartGroupUsage)} helper="VLAN50, VLAN60, and VLAN70" icon={<Users className="h-5 w-5" />} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <ChartCard title="Starlink 500GB Monitor" description="Cycle-to-date Starlink usage, projection, and daily trend from interface counter deltas.">
+          {starlinkUsage ? (
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-2xl bg-surface px-4 py-4">
+                  <p className="text-sm text-text-soft">Used</p>
+                  <p className="mt-2 text-xl font-semibold">{formatBytes(starlinkUsage.usedBytes)}</p>
+                </div>
+                <div className="rounded-2xl bg-surface px-4 py-4">
+                  <p className="text-sm text-text-soft">Average daily</p>
+                  <p className="mt-2 text-xl font-semibold">{formatBytes(starlinkUsage.averageDailyBytes)}</p>
+                </div>
+                <div className="rounded-2xl bg-surface px-4 py-4">
+                  <p className="text-sm text-text-soft">Projected month</p>
+                  <p className="mt-2 text-xl font-semibold">{formatBytes(starlinkUsage.projectedMonthlyBytes)}</p>
+                </div>
+              </div>
+              <QuotaProgressBar value={starlinkUsage.usagePercent} />
+              <p className="text-sm text-text-soft">
+                Thresholds: {starlinkUsage.thresholds.map((threshold) => `${threshold.percent}% ${threshold.reached ? "reached" : "pending"}`).join(" • ")}
+              </p>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={starlinkUsage.dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
+                    <Tooltip formatter={(value: number) => formatBytes(value)} />
+                    <Line dataKey="totalBytes" type="monotone" stroke="#0891b2" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ) : (
+            <EmptyState description="Starlink usage data is not available yet." />
+          )}
+        </ChartCard>
+
+        <ChartCard title="Group Policy Summary" description="Configured user segmentation for the current routing layout.">
+          <div className="space-y-3">
+            {summary.groupPolicies.map((group) => (
+              <div key={group.key} className="rounded-2xl border border-line/80 bg-surface px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">{group.label}</p>
+                  <span className="text-xs uppercase tracking-wide text-text-soft">
+                    {group.policy.starlink ?? 0}/{group.policy.smart_a ?? 0}/{group.policy.smart_b ?? 0}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-text-soft">{group.subnets.join(" • ")}</p>
+                <p className="mt-2 text-sm text-text-soft">
+                  {group.key === "STARLINK_GROUP"
+                    ? "Weighted PCC: 70% Starlink, 15% SmartBro A, 15% SmartBro B."
+                    : "Weighted PCC: 0% Starlink, 50% SmartBro A, 50% SmartBro B."}
+                </p>
+              </div>
+            ))}
+            <div className="rounded-2xl border border-line/80 bg-surface px-4 py-3 text-sm text-text-soft">
+              {summary.distributionNote}
+            </div>
+          </div>
+        </ChartCard>
       </div>
 
       <ChartCard title="Live WAN Traffic" description="Current WAN throughput by interface with recent sparkline samples.">
@@ -179,7 +252,7 @@ export function DashboardOverviewPage() {
                   </div>
                 ),
               },
-              { key: "group", label: "Group", render: (user) => user.group.replace("_", " ") },
+              { key: "group", label: "Group", render: (user) => getGroupLabel(user.group) },
               { key: "down", label: "Download", render: (user) => formatBitsPerSecond(user.downloadBps) },
               { key: "up", label: "Upload", render: (user) => formatBitsPerSecond(user.uploadBps) },
               { key: "combined", label: "Combined", render: (user) => formatBitsPerSecond(user.combinedBps) },
@@ -201,7 +274,7 @@ export function DashboardOverviewPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-text-soft">Group</p>
-                    <p>{user.group.replace("_", " ")}</p>
+                    <p>{getGroupLabel(user.group)}</p>
                   </div>
                   <div>
                     <p className="text-text-soft">Combined</p>
@@ -239,20 +312,23 @@ export function DashboardOverviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard title="ISP Load Distribution" description="Traffic share across Old Starlink, New Starlink, and SmartBro.">
+        <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, SmartBro A, and SmartBro B.">
           {distribution.items.length ? (
-            <div className="h-72 sm:h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={distribution.items} dataKey="totalTrafficBytes" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={4}>
-                    {distribution.items.map((item, index) => (
-                      <Cell key={item.id} fill={ISP_COLORS[index % ISP_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatBytes(value)} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="space-y-3">
+              <div className="h-72 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={distribution.items} dataKey="totalTrafficBytes" nameKey="name" innerRadius={70} outerRadius={110} paddingAngle={4}>
+                      {distribution.items.map((item, index) => (
+                        <Cell key={item.id} fill={ISP_COLORS[index % ISP_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatBytes(value)} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-sm text-text-soft">{summary.distributionNote}</p>
             </div>
           ) : (
             <EmptyState />
@@ -279,13 +355,13 @@ export function DashboardOverviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard title="Group A vs Group B Trend" description="Selected-range group share with totals from positive deltas.">
+        <ChartCard title="Starlink Group vs Smart Group" description="Selected-range group share with totals from positive deltas.">
           {groupUsageQuery.data?.items.length ? (
             <div className="h-72 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={groupUsageQuery.data.items}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
-                  <XAxis dataKey="group" />
+                  <XAxis dataKey="label" />
                   <YAxis tickFormatter={(value) => formatBytes(Number(value))} />
                   <Tooltip formatter={(value: number) => formatBytes(value)} />
                   <Bar dataKey="totalBytes" fill="#0891b2" radius={[8, 8, 0, 0]} />
@@ -309,7 +385,7 @@ export function DashboardOverviewPage() {
               <p className="mt-2 text-xl font-semibold">{formatBytes(comparisons.totalUserTraffic.current)}</p>
               <p className="text-sm text-text-soft">Change: {formatPercentage(comparisons.totalUserTraffic.changePercent ?? 0, 1)}</p>
             </div>
-            <div className="md:col-span-2 rounded-2xl bg-surface px-4 py-4">
+            <div className="rounded-2xl bg-surface px-4 py-4 md:col-span-2">
               <p className="text-sm text-text-soft">Top user movement</p>
               <div className="mt-3 space-y-2">
                 {comparisons.topUsers.map((item) => (

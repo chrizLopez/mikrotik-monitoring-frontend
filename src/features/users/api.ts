@@ -17,7 +17,7 @@ function unwrapData<T>(payload: T | { data: T }) {
 }
 
 function normalizeGroup(value: string | null | undefined) {
-  return value === "Group A" ? "GROUP_A" : "GROUP_B";
+  return value === "Starlink Group" ? "STARLINK_GROUP" : "SMART_GROUP";
 }
 
 async function fetchUsers() {

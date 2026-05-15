@@ -52,7 +52,7 @@ export function LoginPage() {
           </h1>
           <div className="mt-10 grid gap-4">
             {[
-              "Live throughput cards for Starlink, SmartBro A, and SmartBro B.",
+              "Live throughput cards for Starlink, SmartBro A, and Globe.",
               "Cycle-aware monitoring for Starlink Group and Smart Group users.",
               "Starlink 500GB monthly tracking with projection and warning thresholds.",
               "Export-friendly reporting for operations and billing checks.",

@@ -85,7 +85,7 @@ export function DashboardOverviewPage() {
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            WAN traffic, Starlink cap pressure, SmartBro distribution, and user activity for the current weighted PCC design.
+            WAN traffic, Starlink cap pressure, Smart/Globe distribution, and user activity for the current weighted PCC design.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
@@ -99,9 +99,9 @@ export function DashboardOverviewPage() {
           icon={<GaugeCircle className="h-5 w-5" />}
         />
         <StatCard
-          label="SmartBro Total This Month"
+          label="Smart/Globe Total This Month"
           value={formatBytes(smartbroTotal?.usedBytes ?? 0)}
-          helper={smartbroTotal?.items.map((item) => `${item.label}: ${formatBytes(item.usedBytes)}`).join(" | ") ?? "Combined SmartBro A and SmartBro B"}
+          helper={smartbroTotal?.items.map((item) => `${item.label}: ${formatBytes(item.usedBytes)}`).join(" | ") ?? "Combined SmartBro A and Globe"}
           icon={<Activity className="h-5 w-5" />}
         />
         <StatCard
@@ -169,8 +169,8 @@ export function DashboardOverviewPage() {
                 <p className="mt-1 text-sm text-text-soft">{group.subnets.join(" | ")}</p>
                 <p className="mt-2 text-sm text-text-soft">
                   {group.key === "STARLINK_GROUP"
-                    ? "Weighted PCC: 70% Starlink, 15% SmartBro A, 15% SmartBro B."
-                    : "Weighted PCC: 0% Starlink, 50% SmartBro A, 50% SmartBro B."}
+                    ? "Weighted PCC: 70% Starlink, 15% SmartBro A, 15% Globe."
+                    : "Weighted PCC: 0% Starlink, 50% SmartBro A, 50% Globe."}
                 </p>
               </div>
             ))}
@@ -306,7 +306,7 @@ export function DashboardOverviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, SmartBro A, and SmartBro B.">
+        <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, SmartBro A, and Globe.">
           {distributionQuery.isError ? <ErrorState title="Distribution unavailable" description="Traffic distribution failed to load for this range." /> : null}
           {distribution?.items.length ? (
             <div className="space-y-3">

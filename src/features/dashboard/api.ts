@@ -118,7 +118,7 @@ async function fetchSummary(range: RangeOption) {
       : null,
     smartbroTotal: data.smartbro_total && typeof data.smartbro_total === "object"
       ? {
-          label: String((data.smartbro_total as Record<string, unknown>).label ?? "SmartBro Total"),
+          label: String((data.smartbro_total as Record<string, unknown>).label ?? "Smart/Globe Total"),
           usedBytes: Number((data.smartbro_total as Record<string, unknown>).used_bytes ?? 0),
           items: Array.isArray((data.smartbro_total as Record<string, unknown>).items)
             ? ((data.smartbro_total as Record<string, unknown>).items as Array<Record<string, unknown>>).map((item) => ({

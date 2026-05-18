@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, GaugeCircle, Users } from "lucide-react";
+import { Activity, AlertTriangle, Gamepad2, GaugeCircle, Globe2, Smartphone, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -32,6 +32,7 @@ import {
   useDashboardSummary,
   useGroupUsage,
   useIspDistribution,
+  usePopularDestinations,
   useTopUsers,
 } from "@/features/dashboard/api";
 import {
@@ -42,13 +43,23 @@ import {
   formatRangeLabel,
   formatTimestamp,
 } from "@/lib/utils";
-import { ActiveUser, GroupKey, RangeOption } from "@/types/api";
+import { ActiveUser, GroupKey, PopularDestinationCategory, RangeOption } from "@/types/api";
 
 const ISP_COLORS = ["#0891b2", "#22c55e", "#f97316"];
 
 function getGroupLabel(group: GroupKey) {
   return group === "STARLINK_GROUP" ? "Starlink Group" : "Smart Group";
 }
+
+const destinationSections: Array<{
+  key: PopularDestinationCategory;
+  label: string;
+  icon: typeof Smartphone;
+}> = [
+  { key: "apps", label: "Apps", icon: Smartphone },
+  { key: "sites", label: "Sites", icon: Globe2 },
+  { key: "games", label: "Games", icon: Gamepad2 },
+];
 
 export function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
@@ -59,6 +70,7 @@ export function DashboardOverviewPage() {
   const groupUsageQuery = useGroupUsage(range);
   const alertsQuery = useAlerts(range);
   const comparisonsQuery = useComparisons();
+  const popularDestinationsQuery = usePopularDestinations(range);
 
   if (summaryQuery.isLoading) {
     return <LoadingState label="Loading NOC overview..." />;
@@ -304,6 +316,55 @@ export function DashboardOverviewPage() {
           ) : null}
         </ChartCard>
       </div>
+
+      <ChartCard title="Most Visited Apps, Sites, and Games" description="Destination ranking for the selected range once DNS or flow telemetry is connected.">
+        {popularDestinationsQuery.isError ? (
+          <ErrorState title="Destination ranking unavailable" description="The destination summary endpoint failed to load." />
+        ) : null}
+        {popularDestinationsQuery.data ? (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {destinationSections.map((section) => {
+              const Icon = section.icon;
+              const items = popularDestinationsQuery.data.items[section.key];
+
+              return (
+                <div key={section.key} className="rounded-2xl border border-line/80 bg-surface p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h4 className="font-semibold">{section.label}</h4>
+                  </div>
+
+                  {items.length ? (
+                    <div className="mt-4 space-y-3">
+                      {items.slice(0, 8).map((item, index) => (
+                        <div key={item.id} className="flex items-start justify-between gap-3 border-t border-line/70 pt-3 first:border-t-0 first:pt-0">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {index + 1}. {item.name}
+                            </p>
+                            <p className="mt-1 text-xs text-text-soft">
+                              {formatBytes(item.totalBytes)} | {formatPercentage(item.sharePercent, 1)}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-text-soft">{item.visits.toLocaleString()} visits</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-line bg-surface-soft px-4 py-5 text-sm text-text-soft">
+                      Waiting for destination telemetry.
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState description="Destination rankings will appear once telemetry is available." />
+        )}
+      </ChartCard>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, SmartBro A, and Globe.">

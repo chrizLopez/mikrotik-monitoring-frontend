@@ -9,6 +9,8 @@ import {
   GroupUsageResponse,
   Isp,
   LiveDashboardResponse,
+  PopularDestinationCategory,
+  PopularDestinationsResponse,
   RangeOption,
   TopUsersResponse,
 } from "@/types/api";
@@ -199,6 +201,37 @@ async function fetchGroupUsage(range: RangeOption) {
   } satisfies GroupUsageResponse;
 }
 
+async function fetchPopularDestinations(range: RangeOption) {
+  const response = await api.get("/api/dashboard/popular-destinations", {
+    params: { range },
+  });
+  const data = unwrapData<Record<string, unknown>>(response.data);
+  const categories: PopularDestinationCategory[] = ["apps", "sites", "games"];
+
+  return {
+    range,
+    collectionStatus: data.collection_status === "active" ? "active" : "not_configured",
+    items: categories.reduce(
+      (groups, category) => ({
+        ...groups,
+        [category]: Array.isArray((data.items as Record<string, unknown> | undefined)?.[category])
+          ? ((data.items as Record<string, unknown>)[category] as Array<Record<string, unknown>>).map((item) => ({
+              id: String(item.id ?? item.name ?? category),
+              name: String(item.name ?? "Unknown"),
+              category,
+              visits: Number(item.visits ?? 0),
+              totalBytes: Number(item.total_bytes ?? 0),
+              sharePercent: Number(item.share_percent ?? 0),
+              topUser: (item.top_user as string | null | undefined) ?? null,
+              lastSeenAt: (item.last_seen_at as string | null | undefined) ?? null,
+            }))
+          : [],
+      }),
+      { apps: [], sites: [], games: [] } as PopularDestinationsResponse["items"],
+    ),
+  } satisfies PopularDestinationsResponse;
+}
+
 async function fetchLive() {
   const response = await api.get("/api/dashboard/live", { params: { limit: 8 } });
   const data = unwrapData<{ isps?: Array<Record<string, unknown>>; top_active_users?: Array<Record<string, unknown>> }>(response.data);
@@ -336,6 +369,14 @@ export function useGroupUsage(range: RangeOption) {
   return useQuery({
     queryKey: ["dashboard", "groups", range],
     queryFn: () => fetchGroupUsage(range),
+    staleTime: 60_000,
+  });
+}
+
+export function usePopularDestinations(range: RangeOption) {
+  return useQuery({
+    queryKey: ["dashboard", "popular-destinations", range],
+    queryFn: () => fetchPopularDestinations(range),
     staleTime: 60_000,
   });
 }

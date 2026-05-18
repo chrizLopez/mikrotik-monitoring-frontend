@@ -165,6 +165,26 @@ export interface TopUsersResponse {
   items: TopUserItem[];
 }
 
+export type PopularDestinationCategory = "apps" | "sites" | "games";
+export type PopularDestinationStatus = "active" | "not_configured";
+
+export interface PopularDestinationItem {
+  id: string;
+  name: string;
+  category: PopularDestinationCategory;
+  visits: number;
+  totalBytes: number;
+  sharePercent: number;
+  topUser?: string | null;
+  lastSeenAt?: string | null;
+}
+
+export interface PopularDestinationsResponse {
+  range: RangeOption;
+  collectionStatus: PopularDestinationStatus;
+  items: Record<PopularDestinationCategory, PopularDestinationItem[]>;
+}
+
 export interface GroupUsageItem {
   group: GroupKey;
   label: string;

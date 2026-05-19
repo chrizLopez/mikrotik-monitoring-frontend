@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Gamepad2, GaugeCircle, Globe2, Smartphone, Users } from "lucide-react";
+import { Activity, AlertTriangle, Gamepad2, GaugeCircle, Globe2, Grid3X3, ListOrdered, Smartphone, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -43,7 +43,7 @@ import {
   formatRangeLabel,
   formatTimestamp,
 } from "@/lib/utils";
-import { ActiveUser, GroupKey, PopularDestinationCategory, RangeOption } from "@/types/api";
+import { ActiveUser, GroupKey, PopularDestinationCategory, PopularDestinationItem, RangeOption } from "@/types/api";
 
 const ISP_COLORS = ["#0891b2", "#22c55e", "#f97316"];
 
@@ -61,8 +61,15 @@ const destinationSections: Array<{
   { key: "games", label: "Games", icon: Gamepad2 },
 ];
 
+const destinationCategoryLabels: Record<PopularDestinationCategory, string> = {
+  apps: "Apps",
+  sites: "Sites",
+  games: "Games",
+};
+
 export function DashboardOverviewPage() {
   const [range, setRange] = useState<RangeOption>("cycle");
+  const [destinationView, setDestinationView] = useState<"grouped" | "all">("grouped");
   const summaryQuery = useDashboardSummary(range);
   const liveQuery = useDashboardLive();
   const distributionQuery = useIspDistribution(range);
@@ -89,6 +96,11 @@ export function DashboardOverviewPage() {
   const smartGroupUsage = groupUsageQuery.data?.items.find((item) => item.group === "SMART_GROUP")?.totalBytes ?? 0;
   const starlinkUsage = summary.starlinkUsage;
   const smartbroTotal = summary.smartbroTotal;
+  const allDestinationItems: PopularDestinationItem[] = popularDestinationsQuery.data
+    ? Object.values(popularDestinationsQuery.data.items)
+        .flat()
+        .sort((left, right) => right.visits - left.visits || right.totalBytes - left.totalBytes)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -317,11 +329,59 @@ export function DashboardOverviewPage() {
         </ChartCard>
       </div>
 
-      <ChartCard title="Most Visited Apps, Sites, and Games" description="Destination ranking for the selected range once DNS or flow telemetry is connected.">
+      <ChartCard
+        title="Most Visited Apps, Sites, and Games"
+        description="Destination ranking for the selected range once DNS or flow telemetry is connected."
+        action={
+          <div className="inline-flex rounded-xl border border-line/80 bg-surface-soft p-1">
+            <button
+              type="button"
+              onClick={() => setDestinationView("grouped")}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${destinationView === "grouped" ? "bg-accent text-white" : "text-text-soft hover:text-text"}`}
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+              Grouped
+            </button>
+            <button
+              type="button"
+              onClick={() => setDestinationView("all")}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition ${destinationView === "all" ? "bg-accent text-white" : "text-text-soft hover:text-text"}`}
+            >
+              <ListOrdered className="h-3.5 w-3.5" />
+              View all
+            </button>
+          </div>
+        }
+      >
         {popularDestinationsQuery.isError ? (
           <ErrorState title="Destination ranking unavailable" description="The destination summary endpoint failed to load." />
         ) : null}
-        {popularDestinationsQuery.data ? (
+        {popularDestinationsQuery.data && destinationView === "all" ? (
+          allDestinationItems.length ? (
+            <div className="space-y-3">
+              {allDestinationItems.slice(0, 30).map((item, index) => (
+                <div key={`${item.category}-${item.id}`} className="flex items-start justify-between gap-3 border-t border-line/70 pt-3 first:border-t-0 first:pt-0">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-medium">
+                        {index + 1}. {item.name}
+                      </p>
+                      <span className="rounded-full border border-line/80 px-2 py-0.5 text-[11px] uppercase tracking-wide text-text-soft">
+                        {destinationCategoryLabels[item.category]}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-text-soft">
+                      {formatBytes(item.totalBytes)} | {formatPercentage(item.sharePercent, 1)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs text-text-soft">{item.visits.toLocaleString()} visits</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState description="Destination rankings will appear once telemetry is available." />
+          )
+        ) : popularDestinationsQuery.data ? (
           <div className="grid gap-4 lg:grid-cols-3">
             {destinationSections.map((section) => {
               const Icon = section.icon;

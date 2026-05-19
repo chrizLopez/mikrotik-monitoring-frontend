@@ -55,18 +55,28 @@ export function formatDurationMinutes(value: number | null | undefined) {
   return `${hours.toFixed(hours >= 10 ? 0 : 1)} hrs`;
 }
 
+function parseDate(value: string | null | undefined) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function formatTimestamp(value: string | null | undefined) {
-  if (!value) return "--";
+  const date = parseDate(value);
+  if (!date) return "--";
+
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function formatRelativeTime(value: string | null | undefined) {
-  if (!value) return "--";
+  const targetDate = parseDate(value);
+  if (!targetDate) return "--";
 
-  const target = new Date(value).getTime();
+  const target = targetDate.getTime();
   const diffSeconds = Math.round((target - Date.now()) / 1000);
   const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
@@ -110,7 +120,9 @@ export function formatRangeLabel(range: string) {
 }
 
 export function formatChartTick(value: string) {
-  const date = new Date(value);
+  const date = parseDate(value);
+  if (!date) return "--";
+
   return new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",

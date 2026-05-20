@@ -40,7 +40,7 @@ export interface DashboardSummaryResponse {
     policy: {
       starlink?: number;
       smart_a?: number;
-      smart_b?: number;
+      globe?: number;
     };
   }>;
   starlinkUsage: {
@@ -192,7 +192,7 @@ export interface GroupUsageItem {
   policy: {
     starlink?: number;
     smart_a?: number;
-    smart_b?: number;
+    globe?: number;
   };
   totalBytes: number;
   users: number;

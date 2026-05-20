@@ -38,6 +38,10 @@ function normalizeUserState(value: unknown): "NORMAL" | "THROTTLED" | undefined 
   return undefined;
 }
 
+function readPolicyPercent(policy: Record<string, unknown> | undefined, key: "starlink" | "smart_a" | "globe") {
+  return Number(policy?.[key] ?? 0);
+}
+
 function mapIsp(item: Record<string, unknown>) {
   return {
     id: String(item.id),
@@ -88,9 +92,9 @@ async function fetchSummary(range: RangeOption) {
           label: String(item.label ?? ""),
           subnets: Array.isArray(item.subnets) ? item.subnets.map((subnet) => String(subnet)) : [],
           policy: {
-            starlink: Number((item.policy as Record<string, unknown> | undefined)?.starlink ?? 0),
-            smart_a: Number((item.policy as Record<string, unknown> | undefined)?.smart_a ?? 0),
-            smart_b: Number((item.policy as Record<string, unknown> | undefined)?.smart_b ?? 0),
+            starlink: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "starlink"),
+            smart_a: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "smart_a"),
+            globe: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "globe"),
           },
         }))
       : [],
@@ -191,9 +195,9 @@ async function fetchGroupUsage(range: RangeOption) {
       label: String(item.group_name ?? ""),
       subnets: Array.isArray(item.subnets) ? item.subnets.map((subnet) => String(subnet)) : [],
       policy: {
-        starlink: Number((item.policy as Record<string, unknown> | undefined)?.starlink ?? 0),
-        smart_a: Number((item.policy as Record<string, unknown> | undefined)?.smart_a ?? 0),
-        smart_b: Number((item.policy as Record<string, unknown> | undefined)?.smart_b ?? 0),
+        starlink: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "starlink"),
+        smart_a: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "smart_a"),
+        globe: readPolicyPercent(item.policy as Record<string, unknown> | undefined, "globe"),
       },
       totalBytes: Number(item.total_bytes ?? 0),
       users: Number(item.user_count ?? 0),

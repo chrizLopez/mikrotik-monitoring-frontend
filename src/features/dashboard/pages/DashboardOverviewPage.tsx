@@ -187,7 +187,7 @@ export function DashboardOverviewPage() {
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{group.label}</p>
                   <span className="text-xs uppercase tracking-wide text-text-soft">
-                    {group.policy.starlink ?? 0}/{group.policy.smart_a ?? 0}/{group.policy.smart_b ?? 0}
+                    {group.policy.starlink ?? 0}/{group.policy.smart_a ?? 0}/{group.policy.globe ?? 0}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-text-soft">{group.subnets.join(" | ")}</p>

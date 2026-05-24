@@ -52,9 +52,9 @@ export function LoginPage() {
           </h1>
           <div className="mt-10 grid gap-4">
             {[
-              "Live throughput cards for Starlink, SmartBro A, and Globe.",
+              "Live throughput cards for Starlink, Smart, and Globe.",
               "Cycle-aware monitoring for Starlink Group and Smart Group users.",
-              "Starlink 500GB monthly tracking with projection and warning thresholds.",
+              "Starlink traffic tracking without data-cap monitoring.",
               "Export-friendly reporting for operations and billing checks.",
             ].map((item) => (
               <div key={item} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm">

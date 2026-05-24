@@ -109,7 +109,7 @@ export function DashboardOverviewPage() {
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            WAN traffic, Starlink cap pressure, Smart/Globe distribution, and user activity for the current weighted PCC design.
+            WAN traffic, Smart/Globe distribution, and user activity for the current weighted PCC design.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />
@@ -119,13 +119,13 @@ export function DashboardOverviewPage() {
         <StatCard
           label="Starlink Usage This Month"
           value={formatBytes(starlinkUsage?.usedBytes ?? 0)}
-          helper={starlinkUsage ? `${formatPercentage(starlinkUsage.usagePercent, 1)} of ${formatBytes(starlinkUsage.capBytes)} cap` : "Waiting for Starlink usage data"}
+          helper={starlinkUsage ? "Cycle-to-date Starlink traffic, no data cap monitored" : "Waiting for Starlink usage data"}
           icon={<GaugeCircle className="h-5 w-5" />}
         />
         <StatCard
           label="Smart/Globe Total This Month"
           value={formatBytes(smartbroTotal?.usedBytes ?? 0)}
-          helper={smartbroTotal?.items.map((item) => `${item.label}: ${formatBytes(item.usedBytes)}`).join(" | ") ?? "Combined SmartBro A and Globe"}
+          helper={smartbroTotal?.items.map((item) => `${item.label}: ${formatBytes(item.usedBytes)}`).join(" | ") ?? "Combined Smart and Globe"}
           icon={<Activity className="h-5 w-5" />}
         />
         <StatCard
@@ -137,12 +137,12 @@ export function DashboardOverviewPage() {
         <StatCard label="Monitored Users" value={summary.totals.totalActiveUsers} icon={<Users className="h-5 w-5" />} />
         <StatCard label="Throttled Users" value={summary.totals.throttledUsers} icon={<Activity className="h-5 w-5" />} />
         <StatCard label="Active Issues" value={alerts?.activeIssues ?? "--"} icon={<AlertTriangle className="h-5 w-5" />} helper="Quota or ISP alerts at high severity" />
-        <StatCard label="Starlink Group Usage" value={formatBytes(starlinkGroupUsage)} helper="Home Router, VLAN20, VLAN30, and VLAN40" icon={<Users className="h-5 w-5" />} />
-        <StatCard label="Smart Group Usage" value={formatBytes(smartGroupUsage)} helper="VLAN50, VLAN60, and VLAN70" icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Starlink Group Usage" value={formatBytes(starlinkGroupUsage)} helper="Home Router, VLAN20, VLAN30, VLAN40, VLAN50, and VLAN60" icon={<Users className="h-5 w-5" />} />
+        <StatCard label="Smart Group Usage" value={formatBytes(smartGroupUsage)} helper="VLAN70 and VLAN80" icon={<Users className="h-5 w-5" />} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <ChartCard title="Starlink 500GB Monitor" description="Cycle-to-date Starlink usage, projection, and daily trend from interface counter deltas.">
+        <ChartCard title="Starlink Traffic Monitor" description="Cycle-to-date Starlink traffic and daily trend from interface counter deltas.">
           {starlinkUsage ? (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-3">
@@ -159,10 +159,16 @@ export function DashboardOverviewPage() {
                   <p className="mt-2 text-xl font-semibold">{formatBytes(starlinkUsage.projectedMonthlyBytes)}</p>
                 </div>
               </div>
-              <QuotaProgressBar value={starlinkUsage.usagePercent} />
-              <p className="text-sm text-text-soft">
-                Thresholds: {starlinkUsage.thresholds.map((threshold) => `${threshold.percent}% ${threshold.reached ? "reached" : "pending"}`).join(" | ")}
-              </p>
+              {starlinkUsage.capBytes > 0 ? (
+                <>
+                  <QuotaProgressBar value={starlinkUsage.usagePercent} />
+                  <p className="text-sm text-text-soft">
+                    Thresholds: {starlinkUsage.thresholds.map((threshold) => `${threshold.percent}% ${threshold.reached ? "reached" : "pending"}`).join(" | ")}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-text-soft">Starlink data-cap monitoring is disabled; this chart tracks traffic only.</p>
+              )}
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={starlinkUsage.dailyTrend}>
@@ -193,8 +199,8 @@ export function DashboardOverviewPage() {
                 <p className="mt-1 text-sm text-text-soft">{group.subnets.join(" | ")}</p>
                 <p className="mt-2 text-sm text-text-soft">
                   {group.key === "STARLINK_GROUP"
-                    ? "Weighted PCC: 70% Starlink, 15% SmartBro A, 15% Globe."
-                    : "Weighted PCC: 0% Starlink, 50% SmartBro A, 50% Globe."}
+                    ? "Weighted PCC: 70% Starlink, 15% Smart, 15% Globe."
+                    : "Weighted PCC: 0% Starlink, 50% Smart, 50% Globe."}
                 </p>
               </div>
             ))}
@@ -427,7 +433,7 @@ export function DashboardOverviewPage() {
       </ChartCard>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, SmartBro A, and Globe.">
+        <ChartCard title="ISP Load Distribution" description="Traffic share across Starlink, Smart, and Globe.">
           {distributionQuery.isError ? <ErrorState title="Distribution unavailable" description="Traffic distribution failed to load for this range." /> : null}
           {distribution?.items.length ? (
             <div className="space-y-3">

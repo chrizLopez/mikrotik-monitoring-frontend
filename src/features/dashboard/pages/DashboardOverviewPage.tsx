@@ -109,7 +109,7 @@ export function DashboardOverviewPage() {
           <p className="text-sm text-text-soft">Last poll: {formatTimestamp(summary.lastPollAt)}</p>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">NOC Overview</h1>
           <p className="mt-2 text-sm text-text-soft">
-            WAN traffic, Smart/Globe distribution, and user activity for the current weighted PCC design.
+            WAN traffic, Smart/Globe distribution, and user activity for the current routing design.
           </p>
         </div>
         <RangeSelector value={range} onChange={setRange} />

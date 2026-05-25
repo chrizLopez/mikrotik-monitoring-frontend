@@ -199,7 +199,7 @@ export function DashboardOverviewPage() {
                 <p className="mt-1 text-sm text-text-soft">{group.subnets.join(" | ")}</p>
                 <p className="mt-2 text-sm text-text-soft">
                   {group.key === "STARLINK_GROUP"
-                    ? "Weighted PCC: 70% Starlink, 15% Smart, 15% Globe."
+                    ? "Routing policy: Starlink only."
                     : "Weighted PCC: 0% Starlink, 50% Smart, 50% Globe."}
                 </p>
               </div>

@@ -318,6 +318,50 @@ export interface ReportsResponse {
   comparisons: ComparisonsResponse;
 }
 
+export interface TrafficControlUser {
+  address: string;
+  timeout: string | null;
+  createdAt: string | null;
+  user: {
+    id: string;
+    name: string;
+    queueName: string;
+    groupName: string;
+    subnet: string;
+  } | null;
+}
+
+export interface TrafficControlResponse {
+  status: "online" | "unavailable";
+  message: string | null;
+  cards: {
+    heavyDownloadDetections: number;
+    suspectedTorrentUsers: number;
+    currentThrottledUsers: number;
+    activeConnections: number;
+  };
+  heavyUsers: TrafficControlUser[];
+  torrentSuspects: TrafficControlUser[];
+  topDownloaders: ActiveUser[];
+  wanWarnings: Array<{
+    name: string;
+    interfaceName: string | null;
+    currentTotalBps: number;
+    severity: "medium" | "high";
+  }>;
+  vlanSpikes: ActiveUser[];
+  queueTree: Array<{
+    name: string;
+    parent: string | null;
+    packetMark: string | null;
+    maxLimit: string | null;
+  }>;
+  activeConnections: {
+    total: number;
+    byGroup: Record<string, number>;
+  };
+}
+
 export interface PaginationMeta {
   currentPage: number;
   lastPage: number;

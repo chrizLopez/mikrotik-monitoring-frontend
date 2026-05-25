@@ -6,12 +6,14 @@ import {
   DashboardIspsResponse,
   DistributionResponse,
   DashboardSummaryResponse,
+  GroupKey,
   GroupUsageResponse,
   Isp,
   LiveDashboardResponse,
   PopularDestinationCategory,
   PopularDestinationsResponse,
   RangeOption,
+  TrafficControlResponse,
   TopUsersResponse,
 } from "@/types/api";
 
@@ -23,7 +25,7 @@ function unwrapData<T>(payload: T | { data: T }) {
   return payload as T;
 }
 
-function normalizeGroup(value: string | null | undefined) {
+function normalizeGroup(value: string | null | undefined): GroupKey {
   return value === "Starlink Group" ? "STARLINK_GROUP" : "SMART_GROUP";
 }
 
@@ -257,6 +259,80 @@ async function fetchLive() {
   } satisfies LiveDashboardResponse;
 }
 
+async function fetchTrafficControl() {
+  const response = await api.get("/api/dashboard/traffic-control");
+  const data = unwrapData(response.data as Record<string, unknown>);
+  const cards = (data.cards as Record<string, unknown> | undefined) ?? {};
+  const activeConnections = (data.active_connections as Record<string, unknown> | undefined) ?? {};
+
+  const mapActiveUser = (item: Record<string, unknown>) => ({
+    id: String(item.id),
+    name: String(item.name ?? "Unknown User"),
+    group: normalizeGroup(item.group_name as string | undefined),
+    subnet: String(item.subnet ?? "--"),
+    downloadBps: Number(item.download_bps ?? 0),
+    uploadBps: Number(item.upload_bps ?? 0),
+    combinedBps: Number(item.combined_bps ?? 0),
+    currentMaxLimit: (item.current_max_limit as string | null | undefined) ?? null,
+    state: normalizeUserState(item.state) ?? "NORMAL",
+    lastSnapshotAt: (item.last_snapshot_at as string | null | undefined) ?? null,
+  });
+
+  const mapTrafficUser = (item: Record<string, unknown>) => {
+    const user = item.user as Record<string, unknown> | null | undefined;
+
+    return {
+      address: String(item.address ?? ""),
+      timeout: (item.timeout as string | null | undefined) ?? null,
+      createdAt: (item.created_at as string | null | undefined) ?? null,
+      user: user
+        ? {
+            id: String(user.id ?? ""),
+            name: String(user.name ?? "Unknown User"),
+            queueName: String(user.queue_name ?? ""),
+            groupName: String(user.group_name ?? ""),
+            subnet: String(user.subnet ?? ""),
+          }
+        : null,
+    };
+  };
+
+  return {
+    status: data.status === "unavailable" ? "unavailable" : "online",
+    message: (data.message as string | null | undefined) ?? null,
+    cards: {
+      heavyDownloadDetections: Number(cards.heavy_download_detections ?? 0),
+      suspectedTorrentUsers: Number(cards.suspected_torrent_users ?? 0),
+      currentThrottledUsers: Number(cards.current_throttled_users ?? 0),
+      activeConnections: Number(cards.active_connections ?? 0),
+    },
+    heavyUsers: Array.isArray(data.heavy_users) ? (data.heavy_users as Array<Record<string, unknown>>).map(mapTrafficUser) : [],
+    torrentSuspects: Array.isArray(data.torrent_suspects) ? (data.torrent_suspects as Array<Record<string, unknown>>).map(mapTrafficUser) : [],
+    topDownloaders: Array.isArray(data.top_downloaders) ? (data.top_downloaders as Array<Record<string, unknown>>).map(mapActiveUser) : [],
+    wanWarnings: Array.isArray(data.wan_warnings)
+      ? (data.wan_warnings as Array<Record<string, unknown>>).map((item) => ({
+          name: String(item.name ?? "Unknown ISP"),
+          interfaceName: (item.interface_name as string | null | undefined) ?? null,
+          currentTotalBps: Number(item.current_total_bps ?? 0),
+          severity: item.severity === "high" ? "high" : "medium",
+        }))
+      : [],
+    vlanSpikes: Array.isArray(data.vlan_spikes) ? (data.vlan_spikes as Array<Record<string, unknown>>).map(mapActiveUser) : [],
+    queueTree: Array.isArray(data.queue_tree)
+      ? (data.queue_tree as Array<Record<string, unknown>>).map((item) => ({
+          name: String(item.name ?? ""),
+          parent: (item.parent as string | null | undefined) ?? null,
+          packetMark: (item.packet_mark as string | null | undefined) ?? (item["packet-mark"] as string | null | undefined) ?? null,
+          maxLimit: (item.max_limit as string | null | undefined) ?? (item["max-limit"] as string | null | undefined) ?? null,
+        }))
+      : [],
+    activeConnections: {
+      total: Number(activeConnections.total ?? 0),
+      byGroup: (activeConnections.by_group as Record<string, number> | undefined) ?? {},
+    },
+  } satisfies TrafficControlResponse;
+}
+
 async function fetchDistribution(range: RangeOption) {
   const response = await api.get("/api/dashboard/isps/distribution", { params: { range } });
   const data = unwrapData<{ items?: Array<Record<string, unknown>>; total_bytes?: number }>(response.data);
@@ -389,6 +465,15 @@ export function useDashboardLive() {
   return useQuery({
     queryKey: ["dashboard", "live"],
     queryFn: fetchLive,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
+export function useTrafficControl() {
+  return useQuery({
+    queryKey: ["dashboard", "traffic-control"],
+    queryFn: fetchTrafficControl,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });

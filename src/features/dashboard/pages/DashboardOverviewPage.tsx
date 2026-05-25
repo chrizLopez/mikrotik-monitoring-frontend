@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Gamepad2, GaugeCircle, Globe2, Grid3X3, ListOrdered, Smartphone, Users } from "lucide-react";
+import { Activity, AlertTriangle, Download, Gamepad2, GaugeCircle, Globe2, Grid3X3, ListOrdered, ShieldAlert, Smartphone, Users } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -33,6 +33,7 @@ import {
   useGroupUsage,
   useIspDistribution,
   usePopularDestinations,
+  useTrafficControl,
   useTopUsers,
 } from "@/features/dashboard/api";
 import {
@@ -78,6 +79,7 @@ export function DashboardOverviewPage() {
   const alertsQuery = useAlerts(range);
   const comparisonsQuery = useComparisons();
   const popularDestinationsQuery = usePopularDestinations(range);
+  const trafficControlQuery = useTrafficControl();
 
   if (summaryQuery.isLoading) {
     return <LoadingState label="Loading NOC overview..." />;
@@ -96,6 +98,7 @@ export function DashboardOverviewPage() {
   const smartGroupUsage = groupUsageQuery.data?.items.find((item) => item.group === "SMART_GROUP")?.totalBytes ?? 0;
   const starlinkUsage = summary.starlinkUsage;
   const smartbroTotal = summary.smartbroTotal;
+  const trafficControl = trafficControlQuery.data;
   const allDestinationItems: PopularDestinationItem[] = popularDestinationsQuery.data
     ? Object.values(popularDestinationsQuery.data.items)
         .flat()
@@ -140,6 +143,76 @@ export function DashboardOverviewPage() {
         <StatCard label="Starlink Group Usage" value={formatBytes(starlinkGroupUsage)} helper="Home Router, VLAN20, VLAN30, VLAN40, VLAN50, and VLAN60" icon={<Users className="h-5 w-5" />} />
         <StatCard label="Smart Group Usage" value={formatBytes(smartGroupUsage)} helper="VLAN70 and VLAN80" icon={<Users className="h-5 w-5" />} />
       </div>
+
+      <ChartCard title="Heavy Download & Torrent Control" description="Live MikroTik HDTCS detections, throttles, and saturation signals.">
+        {trafficControlQuery.isError || trafficControl?.status === "unavailable" ? (
+          <ErrorState title="Traffic control data unavailable" description={trafficControl?.message ?? "The router telemetry endpoint failed to load."} />
+        ) : null}
+        {trafficControl ? (
+          <div className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Heavy detections" value={trafficControl.cards.heavyDownloadDetections} helper="HDTCS_HEAVY_USERS" icon={<Download className="h-5 w-5" />} />
+              <StatCard label="Torrent suspects" value={trafficControl.cards.suspectedTorrentUsers} helper="HDTCS_TORRENT_SUSPECTS" icon={<ShieldAlert className="h-5 w-5" />} />
+              <StatCard label="Active throttles" value={trafficControl.cards.currentThrottledUsers} helper="Queue-tree controlled users" icon={<Activity className="h-5 w-5" />} />
+              <StatCard label="Connections" value={trafficControl.cards.activeConnections} helper="Router connection tracking" icon={<Grid3X3 className="h-5 w-5" />} />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-3">
+              <div className="rounded-2xl border border-line/80 bg-surface p-4">
+                <h4 className="font-semibold">Active Lists</h4>
+                <div className="mt-4 space-y-3">
+                  {[...trafficControl.heavyUsers, ...trafficControl.torrentSuspects].slice(0, 8).map((item) => (
+                    <div key={item.address + "-" + item.timeout} className="border-t border-line/70 pt-3 first:border-t-0 first:pt-0">
+                      <p className="text-sm font-medium">{item.user ? formatDisplayName(item.user.name) : item.address}</p>
+                      <p className="text-xs text-text-soft">
+                        {item.user?.subnet ?? item.address} {item.timeout ? " | " + item.timeout : ""}
+                      </p>
+                    </div>
+                  ))}
+                  {!trafficControl.heavyUsers.length && !trafficControl.torrentSuspects.length ? <EmptyState description="No active heavy or torrent suspects." /> : null}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-line/80 bg-surface p-4">
+                <h4 className="font-semibold">Top Downloaders</h4>
+                <div className="mt-4 space-y-3">
+                  {trafficControl.topDownloaders.slice(0, 6).map((user) => (
+                    <div key={user.id} className="flex items-start justify-between gap-3 border-t border-line/70 pt-3 first:border-t-0 first:pt-0">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{formatDisplayName(user.name)}</p>
+                        <p className="text-xs text-text-soft">{user.subnet}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium">{formatBitsPerSecond(user.downloadBps)}</span>
+                    </div>
+                  ))}
+                  {!trafficControl.topDownloaders.length ? <EmptyState description="No live downloader data yet." /> : null}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-line/80 bg-surface p-4">
+                <h4 className="font-semibold">Queue Tree & Warnings</h4>
+                <div className="mt-4 space-y-3">
+                  {trafficControl.queueTree.map((queue) => (
+                    <div key={queue.name} className="border-t border-line/70 pt-3 first:border-t-0 first:pt-0">
+                      <p className="text-sm font-medium">{queue.name}</p>
+                      <p className="text-xs text-text-soft">
+                        {queue.packetMark ?? "packet mark"} | {queue.maxLimit ?? "no limit"}
+                      </p>
+                    </div>
+                  ))}
+                  {trafficControl.wanWarnings.map((warning) => (
+                    <div key={warning.name} className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                      <span className="font-medium">{warning.name}</span>
+                      <span className="text-text-soft"> {formatBitsPerSecond(warning.currentTotalBps)}</span>
+                    </div>
+                  ))}
+                  {!trafficControl.queueTree.length && !trafficControl.wanWarnings.length ? <EmptyState description="No queue-tree telemetry or WAN warnings." /> : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </ChartCard>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <ChartCard title="Starlink Traffic Monitor" description="Cycle-to-date Starlink traffic and daily trend from interface counter deltas.">
